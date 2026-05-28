@@ -8,7 +8,7 @@ from sqlalchemy import Boolean, DateTime, ForeignKey, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from openops_api.db.models import Base
+from serviq.db.models import Base
 
 
 def _uuid() -> str:

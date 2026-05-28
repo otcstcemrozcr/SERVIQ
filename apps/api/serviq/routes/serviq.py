@@ -9,8 +9,8 @@ from sqlalchemy.orm import Session, selectinload
 
 from ..db.session import get_session
 from ..rbac import OrgContext, Role, require_role
-from ..serviq.email import EmailProviderStub
-from ..serviq.models import (
+from ..email import EmailProviderStub
+from ..models import (
     ServiqCustomer,
     ServiqEquipment,
     ServiqPaymentDetails,
@@ -21,9 +21,9 @@ from ..serviq.models import (
     ServiqWorkOrder,
     ServiqWorkOrderMaterial,
 )
-from ..serviq.payments import ManualPaymentProvider
-from ..serviq.reports import build_service_report
-from ..serviq.schemas import (
+from ..payments import ManualPaymentProvider
+from ..reports import build_service_report
+from ..schemas import (
     CompletionResult,
     EmailRequest,
     MaterialCreate,
@@ -35,7 +35,7 @@ from ..serviq.schemas import (
     WorkOrderStatus,
     WorkOrderUpdate,
 )
-from ..serviq.workflow import ensure_can_complete, ensure_mutable, start_work_order
+from ..workflow import ensure_can_complete, ensure_mutable, start_work_order
 
 router = APIRouter(prefix="/serviq", tags=["serviq"])
 

@@ -297,9 +297,9 @@ function serviqHeaders(): HeadersInit {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
 
   if (typeof window !== "undefined") {
-    const apiKey = localStorage.getItem("openops_api_key");
-    const bearer = localStorage.getItem("openops_access_token");
-    const orgId = localStorage.getItem("openops_org_id");
+    const apiKey = localStorage.getItem("serviq_api_key");
+    const bearer = localStorage.getItem("serviq_access_token");
+    const orgId = localStorage.getItem("serviq_org_id");
 
     if (apiKey) headers["X-API-Key"] = apiKey;
     if (bearer) headers.Authorization = `Bearer ${bearer}`;

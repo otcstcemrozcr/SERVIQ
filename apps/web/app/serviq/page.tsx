@@ -165,7 +165,7 @@ export default function ServiqPage() {
       setOrders(data);
       if (nextSelectedId) setSelectedId(nextSelectedId);
       else {
-        const storedSelected = localStorage.getItem("openops_serviq_selected_order");
+        const storedSelected = localStorage.getItem("serviq_selected_order");
         if (storedSelected && data.some((order) => order.id === storedSelected)) {
           setSelectedId(storedSelected);
         } else if (!selectedId && data[0]) {
@@ -180,18 +180,18 @@ export default function ServiqPage() {
   }
 
   useEffect(() => {
-    const storedOrgId = localStorage.getItem("openops_org_id") ?? DEFAULT_ORG_ID;
-    const storedApiKey = localStorage.getItem("openops_api_key") ?? "";
-    localStorage.setItem("openops_org_id", storedOrgId);
+    const storedOrgId = localStorage.getItem("serviq_org_id") ?? DEFAULT_ORG_ID;
+    const storedApiKey = localStorage.getItem("serviq_api_key") ?? "";
+    localStorage.setItem("serviq_org_id", storedOrgId);
     setAuth({ orgId: storedOrgId, apiKey: storedApiKey });
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function saveConnection() {
-    localStorage.setItem("openops_org_id", auth.orgId || DEFAULT_ORG_ID);
-    if (auth.apiKey) localStorage.setItem("openops_api_key", auth.apiKey);
-    else localStorage.removeItem("openops_api_key");
+    localStorage.setItem("serviq_org_id", auth.orgId || DEFAULT_ORG_ID);
+    if (auth.apiKey) localStorage.setItem("serviq_api_key", auth.apiKey);
+    else localStorage.removeItem("serviq_api_key");
     setNotice("Connection saved.");
     refresh(selected?.id);
   }
@@ -246,7 +246,7 @@ export default function ServiqPage() {
         });
         setOrders((current) => [created, ...current]);
         setSelectedId(created.id);
-        localStorage.setItem("openops_serviq_selected_order", created.id);
+        localStorage.setItem("serviq_selected_order", created.id);
         setShowCreate(false);
         return created;
       },

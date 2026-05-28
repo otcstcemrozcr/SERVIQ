@@ -12,11 +12,11 @@ import { Badge, Button, Card, Field, SelectInput, TextInput } from "@/components
 type ViewMode = "backoffice" | "technician";
 
 const STORAGE = {
-  apiKey: "openops_api_key",
-  orgId: "openops_org_id",
-  selectedOrder: "openops_serviq_selected_order",
-  technicianId: "openops_serviq_technician_id",
-  viewMode: "openops_serviq_dashboard_view_mode",
+  apiKey: "serviq_api_key",
+  orgId: "serviq_org_id",
+  selectedOrder: "serviq_selected_order",
+  technicianId: "serviq_technician_id",
+  viewMode: "serviq_dashboard_view_mode",
 };
 
 const STATUS_COLOR: Record<ServiqWorkOrderStatus, string> = {

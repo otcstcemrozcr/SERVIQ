@@ -13,10 +13,10 @@ os.environ.setdefault("OPENOPS_API_KEY", "test-sentinel-key")
 os.environ.setdefault("SUPABASE_JWT_SECRET", "test-jwt-secret-that-is-long-enough-32chars")
 os.environ.setdefault("OPENOPS_SERVICE_USER_ID", "service-user")
 
-from openops_api.db.models import Base  # noqa: E402
-from openops_api.main import app  # noqa: E402
-from openops_api.rbac import _clear as _clear_orgs  # noqa: E402
-from openops_api.routes import serviq as serviq_routes  # noqa: E402
+from serviq.db.models import Base  # noqa: E402
+from serviq.main import app  # noqa: E402
+from serviq.rbac import _clear as _clear_orgs  # noqa: E402
+from serviq.routes import serviq as serviq_routes  # noqa: E402
 
 
 @pytest.fixture()
