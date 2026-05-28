@@ -1,0 +1,11 @@
+{
+  "name": "serviq",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "web:dev": "pnpm --filter @serviq/web dev",
+    "web:build": "pnpm --filter @serviq/web build",
+    "web:start": "pnpm --filter @serviq/web start"
+  },
+  "packageManager": "pnpm@9.0.0"
+}
