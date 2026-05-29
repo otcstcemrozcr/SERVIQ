@@ -8,6 +8,7 @@ import {
   type ServiqWorkOrderStatus,
 } from "@/lib/api";
 import { Badge, Button, Card, Field, SelectInput, TextInput } from "@/components/ui";
+import { LanguageToggle, useFormatters, useT, type MessageKey } from "@/lib/i18n";
 
 type ViewMode = "backoffice" | "technician";
 
@@ -42,21 +43,8 @@ function mondayStart(date: Date) {
   return copy;
 }
 
-function monthLabel(date: Date) {
-  return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
-}
-
 function dayNumber(date: Date) {
   return date.getDate();
-}
-
-function dateTimeLabel(value: Date) {
-  return value.toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }
 
 function safeStatus(status: string): ServiqWorkOrderStatus {
@@ -65,13 +53,15 @@ function safeStatus(status: string): ServiqWorkOrderStatus {
     : "OPEN") as ServiqWorkOrderStatus;
 }
 
-function statusBadge(status: string) {
+function statusBadge(status: string, t: (key: MessageKey) => string) {
   const normalized = safeStatus(status);
-  return <Badge color={STATUS_COLOR[normalized]}>{normalized.replace("_", " ")}</Badge>;
+  return <Badge color={STATUS_COLOR[normalized]}>{t(`status.${normalized}`)}</Badge>;
 }
 
 export default function ServiqDashboardPage() {
   const router = useRouter();
+  const t = useT();
+  const fmt = useFormatters();
   const [orders, setOrders] = useState<ServiqWorkOrder[]>([]);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
@@ -107,7 +97,7 @@ export default function ServiqDashboardPage() {
         setSelectedTechnicianId(fallbackTech);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not load SERVIQ work orders.");
+      setError(e instanceof Error ? e.message : t("error.loadOrders"));
     } finally {
       setBusy(false);
     }
@@ -212,16 +202,17 @@ export default function ServiqDashboardPage() {
     <main style={{ padding: 16, maxWidth: 1400, margin: "0 auto", background: "#fafafa", minHeight: "100vh" }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
         <div>
-          <a href="/serviq" style={{ color: "#666", fontSize: 14 }}>Back to SERVIQ</a>
-          <h1 style={{ margin: "8px 0 4px", fontSize: 28, color: "#111" }}>SERVIQ Dashboard</h1>
+          <a href="/serviq" style={{ color: "#666", fontSize: 14 }}>{t("common.backToServiq")}</a>
+          <h1 style={{ margin: "8px 0 4px", fontSize: 28, color: "#111" }}>{t("dash.title")}</h1>
           <p style={{ margin: 0, color: "#666", fontSize: 14 }}>
-            Back office and technician calendar view
+            {t("dash.subtitle")}
           </p>
         </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-          <Button variant="secondary" onClick={() => setMode("backoffice")}>Back office</Button>
-          <Button variant="secondary" onClick={() => setMode("technician")}>Technician</Button>
-          <Button variant="secondary" onClick={refresh} disabled={busy}>Refresh</Button>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end", alignItems: "center" }}>
+          <LanguageToggle />
+          <Button variant="secondary" onClick={() => setMode("backoffice")}>{t("common.backOffice")}</Button>
+          <Button variant="secondary" onClick={() => setMode("technician")}>{t("common.technician")}</Button>
+          <Button variant="secondary" onClick={refresh} disabled={busy}>{t("common.refresh")}</Button>
         </div>
       </div>
 
@@ -229,34 +220,34 @@ export default function ServiqDashboardPage() {
         id="connection-panel"
         style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", marginTop: 14 }}
       >
-        <Field label="Org ID">
+        <Field label={t("field.orgId")}>
           <TextInput value={auth.orgId} onChange={(e) => setAuth((current) => ({ ...current, orgId: e.target.value }))} />
         </Field>
-        <Field label="API key">
+        <Field label={t("field.apiKey")}>
           <TextInput
             value={auth.apiKey}
             onChange={(e) => setAuth((current) => ({ ...current, apiKey: e.target.value }))}
-            placeholder="Local development key"
+            placeholder={t("field.apiKeyPlaceholder")}
             type="password"
           />
         </Field>
         <Button onClick={saveConnection} style={{ alignSelf: "end", background: "#2563eb" }}>
-          Save connection
+          {t("field.saveConnection")}
         </Button>
       </Card>
 
       <Card style={{ display: "grid", gap: 12, marginTop: 14 }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <Button variant="secondary" onClick={() => setAnchorDate(new Date(anchorDate.getFullYear(), anchorDate.getMonth() - 1, 1))}>Prev</Button>
-            <Button variant="secondary" onClick={goToToday}>Today</Button>
-            <Button variant="secondary" onClick={() => setAnchorDate(new Date(anchorDate.getFullYear(), anchorDate.getMonth() + 1, 1))}>Next</Button>
+            <Button variant="secondary" onClick={() => setAnchorDate(new Date(anchorDate.getFullYear(), anchorDate.getMonth() - 1, 1))}>{t("common.prev")}</Button>
+            <Button variant="secondary" onClick={goToToday}>{t("common.today")}</Button>
+            <Button variant="secondary" onClick={() => setAnchorDate(new Date(anchorDate.getFullYear(), anchorDate.getMonth() + 1, 1))}>{t("common.next")}</Button>
           </div>
-          <h2 style={{ margin: 0, fontSize: 18 }}>{monthLabel(anchorDate)}</h2>
+          <h2 style={{ margin: 0, fontSize: 18 }}>{fmt.monthLabel(anchorDate)}</h2>
         </div>
 
         <div className="calendar-grid" style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 8 }}>
-          {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((label) => (
+          {fmt.weekdayShort().map((label) => (
             <div key={label} style={{ color: "#888", fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.8 }}>
               {label}
             </div>
@@ -286,7 +277,7 @@ export default function ServiqDashboardPage() {
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                     <strong style={{ fontSize: 14, color: "#111" }}>{dayNumber(day)}</strong>
-                    {isToday && <Badge color="#2563eb">Today</Badge>}
+                    {isToday && <Badge color="#2563eb">{t("common.today")}</Badge>}
                   </div>
                   <div style={{ display: "grid", gap: 6 }}>
                     {events.slice(0, 3).map((event) => (
@@ -296,7 +287,7 @@ export default function ServiqDashboardPage() {
                       </div>
                     ))}
                     {events.length > 3 && (
-                      <p style={{ margin: 0, color: "#666", fontSize: 11 }}>+{events.length - 3} more</p>
+                      <p style={{ margin: 0, color: "#666", fontSize: 11 }}>{t("dash.moreEvents", { count: events.length - 3 })}</p>
                     )}
                   </div>
                 </button>
@@ -308,69 +299,67 @@ export default function ServiqDashboardPage() {
 
       <div className="dashboard-panels" style={{ display: "grid", gridTemplateColumns: "minmax(0, 360px) minmax(0, 1fr)", gap: 16, marginTop: 16 }}>
         <Card style={{ display: "grid", gap: 12, alignContent: "start" }}>
-          <h3 style={{ margin: 0, fontSize: 16 }}>Tabs</h3>
+          <h3 style={{ margin: 0, fontSize: 16 }}>{t("dash.tabs")}</h3>
           <div style={{ display: "grid", gap: 8 }}>
             <Button variant="secondary" onClick={() => router.push("/serviq")} style={{ justifyContent: "flex-start" }}>
-              Workorder
+              {t("nav.workorder")}
             </Button>
             <Button style={{ justifyContent: "flex-start", background: "#2563eb" }}>
-              Dashboard
+              {t("nav.dashboard")}
             </Button>
             <Button variant="secondary" onClick={openConnectionPanel} style={{ justifyContent: "flex-start" }}>
-              Connection
+              {t("nav.connection")}
             </Button>
           </div>
-          <h3 style={{ margin: 0, fontSize: 16 }}>Filters</h3>
-          <Field label="View mode">
+          <h3 style={{ margin: 0, fontSize: 16 }}>{t("dash.filters")}</h3>
+          <Field label={t("field.viewMode")}>
             <SelectInput value={viewMode} onChange={(e) => setMode(e.target.value as ViewMode)}>
-              <option value="backoffice">Back office</option>
-              <option value="technician">Technician</option>
+              <option value="backoffice">{t("common.backOffice")}</option>
+              <option value="technician">{t("common.technician")}</option>
             </SelectInput>
           </Field>
-          <Field label="Technician">
+          <Field label={t("field.technician")}>
             <SelectInput
               value={selectedTechnicianId}
               onChange={(e) => setTechnician(e.target.value)}
               disabled={viewMode === "backoffice" && technicians.length === 0}
             >
-              <option value="">All technicians</option>
+              <option value="">{t("common.allTechnicians")}</option>
               {technicians.map((tech) => (
                 <option key={tech.id} value={tech.id}>{tech.name}</option>
               ))}
             </SelectInput>
           </Field>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
-            <MiniStat label="Open" value={filteredOrders.filter((order) => order.status === "OPEN").length} />
-            <MiniStat label="Active" value={filteredOrders.filter((order) => order.status === "IN_PROGRESS").length} />
-            <MiniStat label="Done" value={filteredOrders.filter((order) => order.status === "COMPLETED").length} />
+            <MiniStat label={t("stat.open")} value={filteredOrders.filter((order) => order.status === "OPEN").length} />
+            <MiniStat label={t("stat.active")} value={filteredOrders.filter((order) => order.status === "IN_PROGRESS").length} />
+            <MiniStat label={t("stat.done")} value={filteredOrders.filter((order) => order.status === "COMPLETED").length} />
           </div>
           <Card style={{ background: "#fbfbfb" }}>
             <p style={{ margin: 0, color: "#666", fontSize: 13 }}>
-              {viewMode === "backoffice"
-                ? "Back office calendar shows all assigned and unassigned work orders."
-                : "Technician view shows the selected technician's schedule for the month."}
+              {viewMode === "backoffice" ? t("dash.backofficeInfo") : t("dash.technicianInfo")}
             </p>
           </Card>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <Button variant="secondary" onClick={() => router.push("/serviq")}>Open work orders</Button>
-            <Button variant="secondary" onClick={() => router.push("/")}>Home</Button>
+            <Button variant="secondary" onClick={() => router.push("/serviq")}>{t("dash.openWorkOrders")}</Button>
+            <Button variant="secondary" onClick={() => router.push("/")}>{t("common.home")}</Button>
           </div>
         </Card>
 
         <Card style={{ display: "grid", gap: 12 }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
             <div>
-              <h3 style={{ margin: 0, fontSize: 16 }}>Day agenda</h3>
-              <p style={{ margin: "4px 0 0", color: "#777", fontSize: 13 }}>{selectedDay.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</p>
+              <h3 style={{ margin: 0, fontSize: 16 }}>{t("dash.dayAgenda")}</h3>
+              <p style={{ margin: "4px 0 0", color: "#777", fontSize: 13 }}>{fmt.longDate(selectedDay)}</p>
             </div>
-            <Badge color="#111">{selectedEvents.length} items</Badge>
+            <Badge color="#111">{t("dash.itemsCount", { count: selectedEvents.length })}</Badge>
           </div>
 
           {error && <p style={{ margin: 0, color: "#b91c1c", fontSize: 13 }}>{error}</p>}
 
           {!selectedEvents.length ? (
             <Card style={{ color: "#777", fontSize: 14 }}>
-              No scheduled work on this day.
+              {t("dash.noScheduledWork")}
             </Card>
           ) : (
             <div style={{ display: "grid", gap: 10 }}>
@@ -389,11 +378,11 @@ export default function ServiqDashboardPage() {
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
                     <strong style={{ fontSize: 14, color: "#111" }}>{event.order.order_no}</strong>
-                    {statusBadge(event.order.status)}
+                    {statusBadge(event.order.status, t)}
                   </div>
                   <p style={{ margin: "6px 0 0", color: "#222", fontSize: 14, fontWeight: 600 }}>{event.order.title}</p>
                   <p style={{ margin: "3px 0 0", color: "#666", fontSize: 12 }}>
-                    {event.order.customer.name} · {event.order.technician?.name ?? "Unassigned"} · {dateTimeLabel(event.when)}
+                    {event.order.customer.name} · {event.order.technician?.name ?? t("common.unassigned")} · {fmt.dateTime(event.when)}
                   </p>
                 </button>
               ))}
@@ -401,7 +390,7 @@ export default function ServiqDashboardPage() {
           )}
 
           <div style={{ borderTop: "1px solid #eee", paddingTop: 12 }}>
-            <h3 style={{ margin: "0 0 10px", fontSize: 16 }}>Selected event snapshot</h3>
+            <h3 style={{ margin: "0 0 10px", fontSize: 16 }}>{t("dash.selectedSnapshot")}</h3>
             <div style={{ display: "grid", gap: 8 }}>
               {selectedEvents.slice(0, 1).map((event) => (
                 <Card key={event.order.id} style={{ display: "grid", gap: 8 }}>
@@ -410,12 +399,12 @@ export default function ServiqDashboardPage() {
                       <p style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>{event.order.order_no}</p>
                       <p style={{ margin: "3px 0 0", color: "#666", fontSize: 13 }}>{event.order.title}</p>
                     </div>
-                    {statusBadge(event.order.status)}
+                    {statusBadge(event.order.status, t)}
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 8 }}>
-                    <MiniStat label="Customer" valueText={event.order.customer.name} />
-                    <MiniStat label="Technician" valueText={event.order.technician?.name ?? "Unassigned"} />
-                    <MiniStat label="Schedule" valueText={dateTimeLabel(event.when)} />
+                    <MiniStat label={t("stat.customer")} valueText={event.order.customer.name} />
+                    <MiniStat label={t("stat.technician")} valueText={event.order.technician?.name ?? t("common.unassigned")} />
+                    <MiniStat label={t("stat.schedule")} valueText={fmt.dateTime(event.when)} />
                   </div>
                 </Card>
               ))}

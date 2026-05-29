@@ -14,9 +14,10 @@ const colors = {
   soft: "#f8f9fa",
 };
 
-export function Card({ children, style }: { children: ReactNode; style?: CSSProperties }) {
+export function Card({ children, style, id }: { children: ReactNode; style?: CSSProperties; id?: string }) {
   return (
     <div
+      id={id}
       style={{
         border: `1px solid ${colors.border}`,
         borderRadius: 8,
