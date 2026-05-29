@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from typing import Iterator
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
+from ..ai import build_service_summary
 from ..db.session import get_session
 from ..rbac import OrgContext, Role, require_role
 from ..email import EmailProviderStub
@@ -22,8 +23,11 @@ from ..models import (
     ServiqWorkOrderMaterial,
 )
 from ..payments import ManualPaymentProvider
+from ..pdf import build_service_report_pdf
 from ..reports import build_service_report
 from ..schemas import (
+    AssistantSummaryOut,
+    AssistantSummaryRequest,
     CompletionResult,
     EmailRequest,
     MaterialCreate,
@@ -80,6 +84,7 @@ def _serialize_work_order(work_order: ServiqWorkOrder) -> dict:
         "title": work_order.title,
         "status": work_order.status,
         "priority": work_order.priority,
+        "scheduled_for": work_order.scheduled_for,
         "visit_notes": work_order.visit_notes,
         "technician_comment": work_order.technician_comment,
         "external_erp_id": work_order.external_erp_id,
@@ -203,6 +208,7 @@ def create_work_order(
         order_no=body.order_no,
         title=body.title,
         priority=body.priority,
+        scheduled_for=body.scheduled_for,
         visit_notes=body.visit_notes,
         customer=customer,
         equipment=equipment,
@@ -342,6 +348,23 @@ def get_report(
     return build_service_report(work_order)
 
 
+@router.get("/work-orders/{work_order_id}/report.pdf")
+def get_report_pdf(
+    work_order_id: str,
+    org: OrgContext = Depends(require_role(Role.VIEWER)),
+    db: Session = Depends(db_session),
+) -> Response:
+    work_order = _get_work_order(db, org.org_id, work_order_id)
+    report = work_order.reports[-1].data if work_order.reports else build_service_report(work_order)
+    pdf_bytes = build_service_report_pdf(report)
+    filename = f"serviq-report-{work_order.order_no}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="{filename}"'},
+    )
+
+
 @router.post("/email")
 def send_email(
     body: EmailRequest,
@@ -358,9 +381,11 @@ def sync_erp() -> dict:
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, "SERVIQ ERP sync adapter is not implemented.")
 
 
-@router.post("/ai/service-summary")
-def service_summary() -> dict:
-    raise HTTPException(
-        status.HTTP_501_NOT_IMPLEMENTED,
-        "SERVIQ AI technician assistant is an extension point and is not implemented.",
-    )
+@router.post("/ai/service-summary", response_model=AssistantSummaryOut)
+def service_summary(
+    body: AssistantSummaryRequest,
+    org: OrgContext = Depends(require_role(Role.VIEWER)),
+    db: Session = Depends(db_session),
+) -> dict:
+    work_order = _get_work_order(db, org.org_id, body.work_order_id)
+    return build_service_summary(work_order)

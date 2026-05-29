@@ -4,11 +4,15 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Numeric, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from serviq.db.models import Base
+
+# Use PostgreSQL JSONB in production but fall back to the generic JSON type on
+# other dialects (e.g. SQLite used by the test suite), which lacks JSONB.
+JSONColumn = JSONB().with_variant(JSON(), "sqlite")
 
 
 def _uuid() -> str:
@@ -71,6 +75,7 @@ class ServiqWorkOrder(Base, TimestampMixin):
     title: Mapped[str] = mapped_column(String(240), nullable=False)
     status: Mapped[str] = mapped_column(String(40), default="OPEN", index=True, nullable=False)
     priority: Mapped[str | None] = mapped_column(String(40))
+    scheduled_for: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
     visit_notes: Mapped[str | None] = mapped_column(Text)
     technician_comment: Mapped[str | None] = mapped_column(Text)
     customer_id: Mapped[str] = mapped_column(ForeignKey("serviq_customers.id"), nullable=False)
@@ -160,7 +165,7 @@ class ServiqPaymentDetails(Base, TimestampMixin):
     currency: Mapped[str] = mapped_column(String(8), default="TRY", nullable=False)
     transaction_id: Mapped[str | None] = mapped_column(String(160))
     provider: Mapped[str | None] = mapped_column(String(80))
-    provider_payload: Mapped[dict | None] = mapped_column(JSONB)
+    provider_payload: Mapped[dict | None] = mapped_column(JSONColumn)
 
     work_order: Mapped[ServiqWorkOrder] = relationship(back_populates="payments")
 
@@ -172,7 +177,7 @@ class ServiqServiceReport(Base, TimestampMixin):
     org_id: Mapped[str] = mapped_column(String(64), index=True, nullable=False)
     work_order_id: Mapped[str] = mapped_column(ForeignKey("serviq_work_orders.id"), nullable=False)
     report_no: Mapped[str] = mapped_column(String(80), nullable=False)
-    data: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    data: Mapped[dict] = mapped_column(JSONColumn, nullable=False)
     email_status: Mapped[str] = mapped_column(String(40), default="NOT_SENT", nullable=False)
     pdf_url: Mapped[str | None] = mapped_column(Text)
 

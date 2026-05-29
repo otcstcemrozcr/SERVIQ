@@ -163,6 +163,7 @@ class WorkOrderCreate(BaseModel):
     order_no: str
     title: str
     priority: str | None = None
+    scheduled_for: datetime | None = None
     visit_notes: str | None = None
     customer: CustomerBase
     equipment: EquipmentBase | None = None
@@ -174,6 +175,7 @@ class WorkOrderUpdate(BaseModel):
     title: str | None = None
     status: WorkOrderStatus | None = None
     priority: str | None = None
+    scheduled_for: datetime | None = None
     visit_notes: str | None = None
     technician_comment: str | None = None
 
@@ -184,6 +186,7 @@ class WorkOrderOut(BaseModel):
     title: str
     status: WorkOrderStatus
     priority: str | None = None
+    scheduled_for: datetime | None = None
     visit_notes: str | None = None
     technician_comment: str | None = None
     external_erp_id: str | None = None
@@ -217,3 +220,23 @@ class AdapterOperationResult(BaseModel):
     status: str
     message: str
     provider_reference: str | None = None
+
+
+class AssistantSummaryRequest(BaseModel):
+    work_order_id: str
+
+
+class AssistantSummaryTotals(BaseModel):
+    materials_count: int
+    labor_hours: float
+    travel_hours: float
+    waiting_hours: float
+
+
+class AssistantSummaryOut(BaseModel):
+    summary: str
+    next_actions: list[str]
+    missing: list[str]
+    totals: AssistantSummaryTotals
+    customer_email_draft: str
+    erp_notification_text: str
