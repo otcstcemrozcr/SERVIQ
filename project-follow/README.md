@@ -5,6 +5,7 @@ Proje takip klasörü. Repo ile birlikte commit edilir, VS Code Explorer'da gör
 - **[01-master-prompt.md](01-master-prompt.md)** — SERVIQ resmi mimari brief'i (vizyon, 9 modül, data model, API, frontend, UX, "önce analiz et" kuralı). Tüm planlama/uygulama kararları buna göre ölçülür.
 - **[02-status-2026-05-28.md](02-status-2026-05-28.md)** — Durum fotoğrafı: tamamlanan commit'ler, açık kontrat uyumsuzlukları, onay bekleyen Phase 0 planı, 8 açık soru.
 - **[03-status-2026-05-30.md](03-status-2026-05-30.md)** — Phase 0 tamamlandı (commit `e5af2e0`): 4 kontrat uyumsuzluğu kapandı, pytest yeşil. Env rename ertelendi. Kalan 8 açık soru sıradaki oturumda.
+- **[04-status-2026-05-31.md](04-status-2026-05-31.md)** — CURRENT. i18n Stage A tamamlandı (commit `b8de224`): dashboard TR/EN. Deploy planlaması başlandı: Vercel Postgres (Neon) seçildi, FastAPI scaffold tasarlandı. 6 işlem immediate, Stage B ve 8 soru kaldı.
 
 > Not: Aynı dosyalar Claude'un kalıcı hafızasında da duruyor (`~/.claude/projects/c--Users-ozcir-Desktop-ServiQ/memory/`). Buradaki kopya **insan-okur** içindir; Claude otomatik olarak hafıza yolundakini yükler.
 
