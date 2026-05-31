@@ -54,6 +54,14 @@ const statusColor: Record<string, string> = {
   CANCELLED: "#777",
 };
 
+const testTechnicians = [
+  { name: "Ahmet Yilmaz", phone: "+90 532 111 22 33" },
+  { name: "Mehmet Kaya", phone: "+90 533 222 33 44" },
+  { name: "Elif Demir", phone: "+90 534 333 44 55" },
+  { name: "Zeynep Celik", phone: "+90 535 444 55 66" },
+  { name: "Can Arslan", phone: "+90 536 555 66 77" },
+];
+
 function compactDate(value: string | null, locale: string) {
   if (!value) return "-";
   return new Date(value).toLocaleString(locale, {
@@ -753,8 +761,31 @@ function CreateWorkOrderForm({
           <Field label={t("serviq.serialNo")}>
             <TextInput value={values.serialNumber} onChange={(e) => setValues((v) => ({ ...v, serialNumber: e.target.value }))} />
           </Field>
+          <Field label={t("serviq.testTechnician")}>
+            <SelectInput
+              value={values.technicianName}
+              onChange={(e) => {
+                const selected = testTechnicians.find((tech) => tech.name === e.target.value);
+                setValues((v) => ({
+                  ...v,
+                  technicianName: selected?.name ?? e.target.value,
+                  technicianPhone: selected?.phone ?? "",
+                }));
+              }}
+            >
+              <option value="">{t("serviq.customTechnician")}</option>
+              {testTechnicians.map((tech) => (
+                <option key={tech.name} value={tech.name}>
+                  {tech.name}
+                </option>
+              ))}
+            </SelectInput>
+          </Field>
           <Field label={t("serviq.technician")}>
             <TextInput value={values.technicianName} onChange={(e) => setValues((v) => ({ ...v, technicianName: e.target.value }))} />
+          </Field>
+          <Field label={t("serviq.phone")}>
+            <TextInput value={values.technicianPhone} onChange={(e) => setValues((v) => ({ ...v, technicianPhone: e.target.value }))} />
           </Field>
           <Field label={t("serviq.visitNotes")}>
             <TextArea value={values.visitNotes} onChange={(e) => setValues((v) => ({ ...v, visitNotes: e.target.value }))} />
