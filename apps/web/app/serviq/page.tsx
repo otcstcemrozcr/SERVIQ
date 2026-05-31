@@ -170,6 +170,7 @@ export default function ServiqPage() {
     [orders, selectedId],
   );
   const canMutate = selected && !["COMPLETED", "CANCELLED"].includes(selected.status);
+  const hasApiKey = Boolean(auth.apiKey.trim());
 
   async function refresh(nextSelectedId?: string) {
     setLoading(true);
@@ -198,6 +199,7 @@ export default function ServiqPage() {
     const storedApiKey = localStorage.getItem("serviq_api_key") ?? "";
     localStorage.setItem("serviq_org_id", storedOrgId);
     setAuth({ orgId: storedOrgId, apiKey: storedApiKey });
+    if (!storedApiKey) setShowConnection(true);
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -230,6 +232,11 @@ export default function ServiqPage() {
 
   async function submitNewOrder(e: FormEvent) {
     e.preventDefault();
+    if (!hasApiKey) {
+      setShowConnection(true);
+      setError(t("serviq.connectionMissing"));
+      return;
+    }
     await runAction(
       "create",
       async () => {
@@ -419,25 +426,29 @@ export default function ServiqPage() {
       />
 
       {showConnection && (
-        <Card style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", marginTop: 14 }}>
-          <Field label={t("field.orgId")}>
-            <TextInput value={auth.orgId} onChange={(e) => setAuth((current) => ({ ...current, orgId: e.target.value }))} />
-          </Field>
-          <Field label={t("field.apiKey")}>
-            <TextInput
-              value={auth.apiKey}
-              onChange={(e) => setAuth((current) => ({ ...current, apiKey: e.target.value }))}
-              placeholder={t("field.apiKeyPlaceholder")}
-              type="password"
-            />
-          </Field>
-          <Button onClick={saveConnection} style={{ alignSelf: "end", background: "#2563eb" }}>
-            {t("field.saveConnection")}
-          </Button>
+        <Card style={{ marginTop: 14 }}>
+          <h2 style={{ fontSize: 16, margin: "0 0 6px" }}>{t("serviq.connectionTitle")}</h2>
+          <p style={{ margin: "0 0 12px", color: "#666", fontSize: 13 }}>{t("serviq.connectionHelp")}</p>
+          <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+            <Field label={t("field.orgId")}>
+              <TextInput value={auth.orgId} onChange={(e) => setAuth((current) => ({ ...current, orgId: e.target.value }))} />
+            </Field>
+            <Field label={t("field.apiKey")}>
+              <TextInput
+                value={auth.apiKey}
+                onChange={(e) => setAuth((current) => ({ ...current, apiKey: e.target.value }))}
+                placeholder={t("field.apiKeyPlaceholder")}
+                type="password"
+              />
+            </Field>
+            <Button onClick={saveConnection} style={{ alignSelf: "end", background: "#2563eb" }}>
+              {t("field.saveConnection")}
+            </Button>
+          </div>
         </Card>
       )}
 
-      {showCreate && <CreateWorkOrderForm values={newOrder} setValues={setNewOrder} busy={Boolean(busy)} onSubmit={submitNewOrder} t={t} />}
+      {showCreate && <CreateWorkOrderForm values={newOrder} setValues={setNewOrder} busy={Boolean(busy) || !hasApiKey} onSubmit={submitNewOrder} t={t} />}
 
       {notice && <p style={{ color: "#166534", fontSize: 13, margin: "12px 0 0" }}>{notice}</p>}
       {error && <p style={{ color: "#b91c1c", fontSize: 13, margin: "12px 0 0" }}>{error}</p>}
