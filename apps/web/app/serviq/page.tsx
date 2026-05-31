@@ -62,6 +62,29 @@ const testTechnicians = [
   { name: "Can Arslan", phone: "+90 536 555 66 77" },
 ];
 
+const scheduleTimes = [
+  "08:00",
+  "08:30",
+  "09:00",
+  "09:30",
+  "10:00",
+  "10:30",
+  "11:00",
+  "11:30",
+  "12:00",
+  "13:00",
+  "13:30",
+  "14:00",
+  "14:30",
+  "15:00",
+  "15:30",
+  "16:00",
+  "16:30",
+  "17:00",
+  "17:30",
+  "18:00",
+];
+
 function compactDate(value: string | null, locale: string) {
   if (!value) return "-";
   return new Date(value).toLocaleString(locale, {
@@ -81,24 +104,10 @@ function fromDatetimeLocal(value: string) {
   return value ? new Date(value).toISOString() : null;
 }
 
-function normalizeScheduledDate(value: string) {
-  const digits = value.replace(/\D/g, "").slice(0, 8);
-  if (digits.length <= 2) return digits;
-  if (digits.length <= 4) return `${digits.slice(0, 2)}.${digits.slice(2)}`;
-  return `${digits.slice(0, 2)}.${digits.slice(2, 4)}.${digits.slice(4)}`;
-}
-
-function normalizeScheduledTime(value: string) {
-  const digits = value.replace(/\D/g, "").slice(0, 4);
-  if (digits.length <= 2) return digits;
-  return `${digits.slice(0, 2)}:${digits.slice(2)}`;
-}
-
 function scheduledInputToIso(date: string, time: string) {
-  const [day, month, year] = date.split(".");
-  if (!day || !month || !year || year.length !== 4) return null;
+  if (!date) return null;
   const normalizedTime = /^\d{2}:\d{2}$/.test(time) ? time : "09:00";
-  return new Date(`${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}T${normalizedTime}`).toISOString();
+  return new Date(`${date}T${normalizedTime}`).toISOString();
 }
 
 function money(value: number | null, locale: string, currency = "TRY") {
@@ -718,29 +727,33 @@ function CreateWorkOrderForm({
           <Field label={t("serviq.scheduledFor")}>
             <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 112px", gap: 8 }}>
               <TextInput
-                inputMode="numeric"
-                placeholder={t("serviq.scheduledDatePlaceholder")}
+                type="date"
                 aria-label={t("serviq.scheduledDate")}
                 value={values.scheduledDate}
                 onChange={(e) =>
                   setValues((v) => ({
                     ...v,
-                    scheduledDate: normalizeScheduledDate(e.target.value),
+                    scheduledDate: e.target.value,
                   }))
                 }
               />
-              <TextInput
-                inputMode="numeric"
-                placeholder={t("serviq.scheduledTimePlaceholder")}
+              <SelectInput
                 aria-label={t("serviq.scheduledTime")}
                 value={values.scheduledTime}
                 onChange={(e) =>
                   setValues((v) => ({
                     ...v,
-                    scheduledTime: normalizeScheduledTime(e.target.value),
+                    scheduledTime: e.target.value,
                   }))
                 }
-              />
+              >
+                <option value="">{t("serviq.scheduledTime")}</option>
+                {scheduleTimes.map((time) => (
+                  <option key={time} value={time}>
+                    {time}
+                  </option>
+                ))}
+              </SelectInput>
             </div>
           </Field>
           <Field label={t("serviq.customer")}>
