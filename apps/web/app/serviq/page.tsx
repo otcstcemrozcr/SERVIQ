@@ -22,6 +22,7 @@ import {
   type ServiqWorkOrder,
 } from "@/lib/api";
 import { Badge, Button, Card, Field, SelectInput, TextArea, TextInput } from "@/components/ui";
+import { LanguageToggle, localeTag, useLocale, useT, type MessageKey } from "@/lib/i18n";
 
 const DEFAULT_ORG_ID = "11111111-1111-1111-1111-111111111111";
 
@@ -52,9 +53,9 @@ const statusColor: Record<string, string> = {
   CANCELLED: "#777",
 };
 
-function compactDate(value: string | null) {
+function compactDate(value: string | null, locale: string) {
   if (!value) return "-";
-  return new Date(value).toLocaleString("en-US", {
+  return new Date(value).toLocaleString(locale, {
     month: "short",
     day: "numeric",
     hour: "2-digit",
@@ -71,26 +72,39 @@ function fromDatetimeLocal(value: string) {
   return value ? new Date(value).toISOString() : null;
 }
 
-function money(value: number | null, currency = "TRY") {
+function money(value: number | null, locale: string, currency = "TRY") {
   if (value == null) return "-";
-  return `${value.toLocaleString("en-US", { maximumFractionDigits: 2 })} ${currency}`;
+  return `${value.toLocaleString(locale, { maximumFractionDigits: 2 })} ${currency}`;
 }
 
-function friendlyError(message: string) {
-  if (message.includes("401")) return "Authentication failed. Check the API key or access token.";
-  if (message.includes("403")) return "This account cannot perform that action for the selected organization.";
-  if (message.includes("422")) return "Required information is missing or invalid.";
-  if (message.includes("Payment is required")) return "Record a payment or bill this customer to account before completion.";
-  if (message.includes("cannot be modified")) return "Completed or cancelled work orders cannot be changed.";
-  if (message.includes("DATABASE_URL")) return "The API database connection is not configured.";
+function friendlyError(message: string, t: (key: MessageKey, vars?: Record<string, string | number>) => string) {
+  if (message.includes("401")) return t("error.authFailed");
+  if (message.includes("403")) return t("error.forbidden");
+  if (message.includes("422")) return t("error.invalid");
+  if (message.includes("Payment is required")) return t("error.paymentRequired");
+  if (message.includes("cannot be modified")) return t("error.lockedOrder");
+  if (message.includes("DATABASE_URL")) return t("error.databaseMissing");
   return message;
 }
 
-function StatusPill({ status }: { status: string }) {
-  return <Badge color={statusColor[status] ?? "#444"}>{status.replace("_", " ")}</Badge>;
+function StatusPill({ status, t }: { status: string; t: (key: MessageKey) => string }) {
+  const key = `status.${status}` as MessageKey;
+  return <Badge color={statusColor[status] ?? "#444"}>{t(key)}</Badge>;
 }
 
+const tabLabels: Record<Tab, MessageKey> = {
+  details: "serviq.details",
+  materials: "serviq.materials",
+  time: "serviq.time",
+  sign: "serviq.sign",
+  payment: "serviq.payment",
+  assistant: "serviq.assistant",
+};
+
 export default function ServiqPage() {
+  const t = useT();
+  const { locale } = useLocale();
+  const localeName = localeTag[locale];
   const [orders, setOrders] = useState<ServiqWorkOrder[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [activeTab, setActiveTab] = useState<Tab>("details");
@@ -173,7 +187,7 @@ export default function ServiqPage() {
         }
       }
     } catch (e) {
-      setError(friendlyError(e instanceof Error ? e.message : "Could not load SERVIQ work orders"));
+      setError(friendlyError(e instanceof Error ? e.message : t("error.loadOrders"), t));
     } finally {
       setLoading(false);
     }
@@ -192,7 +206,7 @@ export default function ServiqPage() {
     localStorage.setItem("serviq_org_id", auth.orgId || DEFAULT_ORG_ID);
     if (auth.apiKey) localStorage.setItem("serviq_api_key", auth.apiKey);
     else localStorage.removeItem("serviq_api_key");
-    setNotice("Connection saved.");
+    setNotice(t("notice.connectionSaved"));
     refresh(selected?.id);
   }
 
@@ -208,7 +222,7 @@ export default function ServiqPage() {
       }
       setNotice(success);
     } catch (e) {
-      setError(friendlyError(e instanceof Error ? e.message : `${label} failed`));
+      setError(friendlyError(e instanceof Error ? e.message : t("error.actionFailed", { label }), t));
     } finally {
       setBusy("");
     }
@@ -250,14 +264,14 @@ export default function ServiqPage() {
         setShowCreate(false);
         return created;
       },
-      "Work order created.",
+      t("notice.workOrderCreated"),
     );
   }
 
   async function beginVisit() {
     if (!selected) return;
     setTimeEntry((current) => ({ ...current, arrival_time: toDatetimeLocal(new Date()) }));
-    await runAction("start", () => startServiqWorkOrder(selected.id), "Visit started.");
+    await runAction("start", () => startServiqWorkOrder(selected.id), t("notice.visitStarted"));
   }
 
   function endVisit() {
@@ -275,7 +289,7 @@ export default function ServiqPage() {
           ...material,
           warehouse_location: material.warehouse_location || null,
         }),
-      "Material saved.",
+      t("notice.materialSaved"),
     );
   }
 
@@ -293,14 +307,14 @@ export default function ServiqPage() {
           waiting_hours: timeEntry.waiting_hours,
           technician_comment: timeEntry.technician_comment || null,
         }),
-      "Time entry saved.",
+      t("notice.timeSaved"),
     );
   }
 
   async function submitSignature(e: FormEvent) {
     e.preventDefault();
     if (!selected) return;
-    await runAction("signature", () => addServiqSignature(selected.id, signature), "Signature saved.");
+    await runAction("signature", () => addServiqSignature(selected.id, signature), t("notice.signatureSaved"));
   }
 
   async function submitPayment(e: FormEvent) {
@@ -320,7 +334,7 @@ export default function ServiqPage() {
         });
         await refresh(selected.id);
       },
-      "Payment recorded.",
+      t("notice.paymentRecorded"),
     );
   }
 
@@ -332,7 +346,7 @@ export default function ServiqPage() {
         const result = await completeServiqWorkOrder(selected.id);
         return result.work_order;
       },
-      "Work order completed.",
+      t("notice.workOrderCompleted"),
     );
   }
 
@@ -343,7 +357,7 @@ export default function ServiqPage() {
       async () => {
         await getServiqReport(selected.id);
       },
-      "Service report is available from the API.",
+      t("notice.reportAvailable"),
     );
   }
 
@@ -360,13 +374,13 @@ export default function ServiqPage() {
         link.click();
         URL.revokeObjectURL(url);
       },
-      "PDF downloaded.",
+      t("notice.pdfDownloaded"),
     );
   }
 
   async function emailReport() {
     if (!selected?.customer.email) {
-      setError("Customer email is missing.");
+      setError(t("error.customerEmailMissing"));
       return;
     }
     await runAction(
@@ -374,7 +388,7 @@ export default function ServiqPage() {
       async () => {
         await sendServiqEmail(selected.id, selected.customer.email ?? "");
       },
-      "Service report email queued.",
+      t("notice.emailQueued"),
     );
   }
 
@@ -384,9 +398,9 @@ export default function ServiqPage() {
     setError("");
     try {
       setAssistantSummary(await getServiqAssistantSummary(selected.id));
-      setNotice("Assistant summary updated.");
+      setNotice(t("notice.assistantUpdated"));
     } catch (e) {
-      setError(friendlyError(e instanceof Error ? e.message : "Assistant summary failed"));
+      setError(friendlyError(e instanceof Error ? e.message : t("error.assistantFailed"), t));
     } finally {
       setBusy("");
     }
@@ -401,28 +415,29 @@ export default function ServiqPage() {
         onRefresh={() => refresh(selected?.id)}
         onNew={() => setShowCreate((value) => !value)}
         onConnection={() => setShowConnection((value) => !value)}
+        t={t}
       />
 
       {showConnection && (
         <Card style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", marginTop: 14 }}>
-          <Field label="Org ID">
+          <Field label={t("field.orgId")}>
             <TextInput value={auth.orgId} onChange={(e) => setAuth((current) => ({ ...current, orgId: e.target.value }))} />
           </Field>
-          <Field label="API key">
+          <Field label={t("field.apiKey")}>
             <TextInput
               value={auth.apiKey}
               onChange={(e) => setAuth((current) => ({ ...current, apiKey: e.target.value }))}
-              placeholder="Local development key"
+              placeholder={t("field.apiKeyPlaceholder")}
               type="password"
             />
           </Field>
           <Button onClick={saveConnection} style={{ alignSelf: "end", background: "#2563eb" }}>
-            Save connection
+            {t("field.saveConnection")}
           </Button>
         </Card>
       )}
 
-      {showCreate && <CreateWorkOrderForm values={newOrder} setValues={setNewOrder} busy={Boolean(busy)} onSubmit={submitNewOrder} />}
+      {showCreate && <CreateWorkOrderForm values={newOrder} setValues={setNewOrder} busy={Boolean(busy)} onSubmit={submitNewOrder} t={t} />}
 
       {notice && <p style={{ color: "#166534", fontSize: 13, margin: "12px 0 0" }}>{notice}</p>}
       {error && <p style={{ color: "#b91c1c", fontSize: 13, margin: "12px 0 0" }}>{error}</p>}
@@ -430,15 +445,15 @@ export default function ServiqPage() {
       <div className="serviq-shell" style={{ display: "grid", gridTemplateColumns: "minmax(0, 340px) minmax(0, 1fr)", gap: 18, marginTop: 18 }}>
         <section className={showList ? "work-list is-open" : "work-list"} style={{ display: "grid", gap: 10, alignContent: "start" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <h2 style={{ fontSize: 16, margin: 0 }}>Work orders</h2>
+            <h2 style={{ fontSize: 16, margin: 0 }}>{t("serviq.workOrders")}</h2>
             <Button variant="secondary" onClick={() => setShowList(false)} style={{ display: "none" }} className="mobile-only">
-              Close
+              {t("common.close")}
             </Button>
           </div>
           {loading ? (
-            <EmptyState message="Loading work orders..." />
+            <EmptyState message={t("serviq.loadingWorkOrders")} />
           ) : orders.length === 0 ? (
-            <EmptyState message="No work orders yet." action={<Button onClick={() => setShowCreate(true)}>Create work order</Button>} />
+            <EmptyState message={t("serviq.noWorkOrders")} action={<Button onClick={() => setShowCreate(true)}>{t("serviq.createWorkOrder")}</Button>} />
           ) : (
             orders.map((order) => (
               <button
@@ -458,7 +473,7 @@ export default function ServiqPage() {
               >
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
                   <strong style={{ color: "#111", fontSize: 14 }}>{order.order_no}</strong>
-                  <StatusPill status={order.status} />
+                  <StatusPill status={order.status} t={t} />
                 </div>
                 <p style={{ margin: "7px 0 2px", color: "#222", fontSize: 14 }}>{order.title}</p>
                 <p style={{ margin: 0, color: "#777", fontSize: 12 }}>{order.customer.name}</p>
@@ -469,31 +484,31 @@ export default function ServiqPage() {
 
         <section style={{ minWidth: 0 }}>
           {!selected ? (
-            <EmptyState message={error ? "Connection is required before work orders can load." : "Select or create a work order."} />
+            <EmptyState message={error ? t("serviq.connectionRequired") : t("serviq.selectOrCreate")} />
           ) : (
             <div style={{ display: "grid", gap: 14 }}>
               <Card style={{ position: "sticky", top: 0, zIndex: 2 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
                   <div>
-                    <StatusPill status={selected.status} />
+                    <StatusPill status={selected.status} t={t} />
                     <h2 style={{ margin: "10px 0 4px", fontSize: 22 }}>{selected.title}</h2>
                     <p style={{ margin: 0, color: "#777", fontSize: 13 }}>
                       {selected.order_no} · {selected.customer.name}
                     </p>
                   </div>
                   <Button variant="secondary" onClick={() => setShowList(true)} style={{ display: "none" }} className="mobile-only">
-                    List
+                    {t("common.list")}
                   </Button>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8, marginTop: 14 }}>
                   <Button disabled={!canMutate || Boolean(busy)} onClick={beginVisit}>
-                    Start visit
+                    {t("serviq.startVisit")}
                   </Button>
                   <Button disabled={!canMutate || Boolean(busy)} variant="secondary" onClick={endVisit}>
-                    End visit
+                    {t("serviq.endVisit")}
                   </Button>
                   <Button disabled={!canMutate || Boolean(busy)} variant="success" onClick={completeSelected}>
-                    Complete
+                    {t("serviq.complete")}
                   </Button>
                 </div>
               </Card>
@@ -514,28 +529,28 @@ export default function ServiqPage() {
                       cursor: "pointer",
                     }}
                   >
-                    {tab[0].toUpperCase() + tab.slice(1)}
+                    {t(tabLabels[tab])}
                   </button>
                 ))}
               </nav>
 
               {activeTab === "details" && (
-                <DetailsTab selected={selected} onViewReport={viewReport} onDownloadPdf={downloadPdf} onEmailReport={emailReport} busy={Boolean(busy)} />
+                <DetailsTab selected={selected} onViewReport={viewReport} onDownloadPdf={downloadPdf} onEmailReport={emailReport} busy={Boolean(busy)} t={t} localeName={localeName} />
               )}
               {activeTab === "materials" && (
-                <MaterialsTab selected={selected} material={material} setMaterial={setMaterial} canMutate={Boolean(canMutate)} busy={Boolean(busy)} onSubmit={submitMaterial} />
+                <MaterialsTab selected={selected} material={material} setMaterial={setMaterial} canMutate={Boolean(canMutate)} busy={Boolean(busy)} onSubmit={submitMaterial} t={t} />
               )}
               {activeTab === "time" && (
-                <TimeTab selected={selected} timeEntry={timeEntry} setTimeEntry={setTimeEntry} canMutate={Boolean(canMutate)} busy={Boolean(busy)} onSubmit={submitTime} />
+                <TimeTab selected={selected} timeEntry={timeEntry} setTimeEntry={setTimeEntry} canMutate={Boolean(canMutate)} busy={Boolean(busy)} onSubmit={submitTime} t={t} localeName={localeName} />
               )}
               {activeTab === "sign" && (
-                <SignatureTab selected={selected} signature={signature} setSignature={setSignature} canMutate={Boolean(canMutate)} busy={Boolean(busy)} onSubmit={submitSignature} />
+                <SignatureTab selected={selected} signature={signature} setSignature={setSignature} canMutate={Boolean(canMutate)} busy={Boolean(busy)} onSubmit={submitSignature} t={t} />
               )}
               {activeTab === "payment" && (
-                <PaymentTab selected={selected} payment={payment} setPayment={setPayment} canMutate={Boolean(canMutate)} busy={Boolean(busy)} onSubmit={submitPayment} />
+                <PaymentTab selected={selected} payment={payment} setPayment={setPayment} canMutate={Boolean(canMutate)} busy={Boolean(busy)} onSubmit={submitPayment} t={t} localeName={localeName} />
               )}
               {activeTab === "assistant" && (
-                <AssistantTab summary={assistantSummary} busy={Boolean(busy)} onRefresh={loadAssistantSummary} />
+                <AssistantTab summary={assistantSummary} busy={Boolean(busy)} onRefresh={loadAssistantSummary} t={t} />
               )}
             </div>
           )}
@@ -580,6 +595,7 @@ function Header({
   onRefresh,
   onNew,
   onConnection,
+  t,
 }: {
   selected: ServiqWorkOrder | null;
   loading: boolean;
@@ -587,17 +603,19 @@ function Header({
   onRefresh: () => void;
   onNew: () => void;
   onConnection: () => void;
+  t: (key: MessageKey, vars?: Record<string, string | number>) => string;
 }) {
   return (
     <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
       <div>
-        <a href="/" style={{ color: "#666", fontSize: 14 }}>Back</a>
-        <h1 style={{ margin: "8px 0 4px", fontSize: 28, color: "#111" }}>Work Orders</h1>
+        <a href="/" style={{ color: "#666", fontSize: 14 }}>{t("nav.back")}</a>
+        <h1 style={{ margin: "8px 0 4px", fontSize: 28, color: "#111" }}>{t("serviq.title")}</h1>
         <p style={{ margin: 0, color: "#666", fontSize: 14 }}>
-          {selected ? `${selected.order_no} selected` : "SERVIQ field service"}
+          {selected ? t("serviq.selected", { orderNo: selected.order_no }) : t("serviq.subtitle")}
         </p>
       </div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+        <LanguageToggle />
         <a
           href="/serviq/dashboard"
           style={{
@@ -614,11 +632,11 @@ function Header({
             textDecoration: "none",
           }}
         >
-          Dashboard
+          {t("nav.dashboard")}
         </a>
-        <Button variant="secondary" onClick={onConnection}>Connection</Button>
-        <Button variant="secondary" onClick={onRefresh} disabled={loading || busy}>Refresh</Button>
-        <Button onClick={onNew}>New</Button>
+        <Button variant="secondary" onClick={onConnection}>{t("nav.connection")}</Button>
+        <Button variant="secondary" onClick={onRefresh} disabled={loading || busy}>{t("common.refresh")}</Button>
+        <Button onClick={onNew}>{t("common.new")}</Button>
       </div>
     </div>
   );
@@ -629,60 +647,62 @@ function CreateWorkOrderForm({
   setValues,
   busy,
   onSubmit,
+  t,
 }: {
   values: NewWorkOrderFormState;
   setValues: React.Dispatch<React.SetStateAction<NewWorkOrderFormState>>;
   busy: boolean;
   onSubmit: (e: FormEvent) => void;
+  t: (key: MessageKey) => string;
 }) {
   return (
     <Card style={{ marginTop: 14 }}>
       <form onSubmit={onSubmit}>
-        <h2 style={{ fontSize: 16, margin: "0 0 12px" }}>New work order</h2>
+        <h2 style={{ fontSize: 16, margin: "0 0 12px" }}>{t("serviq.newWorkOrder")}</h2>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
-          <Field label="Order no">
+          <Field label={t("serviq.orderNo")}>
             <TextInput required value={values.orderNo} onChange={(e) => setValues((v) => ({ ...v, orderNo: e.target.value }))} />
           </Field>
-          <Field label="Title">
+          <Field label={t("serviq.titleField")}>
             <TextInput required value={values.title} onChange={(e) => setValues((v) => ({ ...v, title: e.target.value }))} />
           </Field>
-          <Field label="Priority">
+          <Field label={t("serviq.priority")}>
             <SelectInput value={values.priority} onChange={(e) => setValues((v) => ({ ...v, priority: e.target.value }))}>
-              <option value="LOW">Low</option>
-              <option value="NORMAL">Normal</option>
-              <option value="HIGH">High</option>
-              <option value="URGENT">Urgent</option>
+              <option value="LOW">{t("priority.LOW")}</option>
+              <option value="NORMAL">{t("priority.NORMAL")}</option>
+              <option value="HIGH">{t("priority.HIGH")}</option>
+              <option value="URGENT">{t("priority.URGENT")}</option>
             </SelectInput>
           </Field>
-          <Field label="Scheduled for">
+          <Field label={t("serviq.scheduledFor")}>
             <TextInput
               type="datetime-local"
               value={values.scheduledFor}
               onChange={(e) => setValues((v) => ({ ...v, scheduledFor: e.target.value }))}
             />
           </Field>
-          <Field label="Customer">
+          <Field label={t("serviq.customer")}>
             <TextInput required value={values.customerName} onChange={(e) => setValues((v) => ({ ...v, customerName: e.target.value }))} />
           </Field>
-          <Field label="Customer phone">
+          <Field label={t("serviq.customerPhone")}>
             <TextInput value={values.customerPhone} onChange={(e) => setValues((v) => ({ ...v, customerPhone: e.target.value }))} />
           </Field>
-          <Field label="Customer email">
+          <Field label={t("serviq.customerEmail")}>
             <TextInput value={values.customerEmail} onChange={(e) => setValues((v) => ({ ...v, customerEmail: e.target.value }))} />
           </Field>
-          <Field label="Equipment">
+          <Field label={t("serviq.equipment")}>
             <TextInput value={values.equipmentName} onChange={(e) => setValues((v) => ({ ...v, equipmentName: e.target.value }))} />
           </Field>
-          <Field label="Model">
+          <Field label={t("serviq.model")}>
             <TextInput value={values.equipmentModel} onChange={(e) => setValues((v) => ({ ...v, equipmentModel: e.target.value }))} />
           </Field>
-          <Field label="Serial no">
+          <Field label={t("serviq.serialNo")}>
             <TextInput value={values.serialNumber} onChange={(e) => setValues((v) => ({ ...v, serialNumber: e.target.value }))} />
           </Field>
-          <Field label="Technician">
+          <Field label={t("serviq.technician")}>
             <TextInput value={values.technicianName} onChange={(e) => setValues((v) => ({ ...v, technicianName: e.target.value }))} />
           </Field>
-          <Field label="Visit notes">
+          <Field label={t("serviq.visitNotes")}>
             <TextArea value={values.visitNotes} onChange={(e) => setValues((v) => ({ ...v, visitNotes: e.target.value }))} />
           </Field>
           <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#333", alignSelf: "end" }}>
@@ -691,10 +711,10 @@ function CreateWorkOrderForm({
               checked={values.billToAccount}
               onChange={(e) => setValues((v) => ({ ...v, billToAccount: e.target.checked }))}
             />
-            Bill to account
+            {t("serviq.billToAccount")}
           </label>
         </div>
-        <Button disabled={busy} style={{ marginTop: 12 }}>Create work order</Button>
+        <Button disabled={busy} style={{ marginTop: 12 }}>{t("serviq.createWorkOrder")}</Button>
       </form>
     </Card>
   );
@@ -706,29 +726,33 @@ function DetailsTab({
   onDownloadPdf,
   onEmailReport,
   busy,
+  t,
+  localeName,
 }: {
   selected: ServiqWorkOrder;
   onViewReport: () => void;
   onDownloadPdf: () => void;
   onEmailReport: () => void;
   busy: boolean;
+  t: (key: MessageKey) => string;
+  localeName: string;
 }) {
   return (
     <Card>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
-                <Info label="Customer" value={selected.customer.name} />
-                <Info label="Phone" value={selected.customer.phone ?? "-"} />
-                <Info label="Equipment" value={selected.equipment?.name ?? "-"} />
-                <Info label="Serial" value={selected.equipment?.serial_number ?? "-"} />
-                <Info label="Technician" value={selected.technician?.name ?? "-"} />
-                <Info label="Scheduled for" value={compactDate(selected.scheduled_for)} />
-                <Info label="Created" value={compactDate(selected.created_at)} />
+                <Info label={t("serviq.customer")} value={selected.customer.name} />
+                <Info label={t("serviq.phone")} value={selected.customer.phone ?? "-"} />
+                <Info label={t("serviq.equipment")} value={selected.equipment?.name ?? "-"} />
+                <Info label={t("serviq.serial")} value={selected.equipment?.serial_number ?? "-"} />
+                <Info label={t("serviq.technician")} value={selected.technician?.name ?? "-"} />
+                <Info label={t("serviq.scheduledFor")} value={compactDate(selected.scheduled_for, localeName)} />
+                <Info label={t("serviq.created")} value={compactDate(selected.created_at, localeName)} />
               </div>
       {selected.visit_notes && <p style={{ margin: "14px 0 0", color: "#444", fontSize: 14 }}>{selected.visit_notes}</p>}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 14 }}>
-        <Button variant="secondary" disabled={busy} onClick={onViewReport}>View report</Button>
-        <Button variant="secondary" disabled={busy} onClick={onDownloadPdf}>Download PDF</Button>
-        <Button variant="secondary" disabled={busy || !selected.customer.email} onClick={onEmailReport}>Send email</Button>
+        <Button variant="secondary" disabled={busy} onClick={onViewReport}>{t("serviq.viewReport")}</Button>
+        <Button variant="secondary" disabled={busy} onClick={onDownloadPdf}>{t("serviq.downloadPdf")}</Button>
+        <Button variant="secondary" disabled={busy || !selected.customer.email} onClick={onEmailReport}>{t("serviq.sendEmail")}</Button>
       </div>
     </Card>
   );
@@ -741,6 +765,7 @@ function MaterialsTab({
   canMutate,
   busy,
   onSubmit,
+  t,
 }: {
   selected: ServiqWorkOrder;
   material: {
@@ -755,31 +780,41 @@ function MaterialsTab({
   canMutate: boolean;
   busy: boolean;
   onSubmit: (e: FormEvent) => void;
+  t: (key: MessageKey) => string;
 }) {
   return (
     <ActionWithList
-      title="Material usage"
+      title={t("serviq.materialUsage")}
       onSubmit={onSubmit}
-      submitLabel="Add material"
+      submitLabel={t("serviq.addMaterial")}
       disabled={!canMutate || busy}
       records={selected.materials.map((item) => (
-        <Row key={item.id} left={item.material_name} right={`${item.quantity} ${item.unit}`} meta={`${item.material_code} · ${item.status}`} />
+        <Row key={item.id} left={item.material_name} right={`${item.quantity} ${item.unit}`} meta={`${item.material_code} · ${materialStatusLabel(item.status, t)}`} />
       ))}
-      empty="No materials recorded."
+      empty={t("serviq.noMaterials")}
+      t={t}
     >
-      <TextInput required placeholder="Material code" value={material.material_code} onChange={(e) => setMaterial((v) => ({ ...v, material_code: e.target.value }))} />
-      <TextInput required placeholder="Material name" value={material.material_name} onChange={(e) => setMaterial((v) => ({ ...v, material_name: e.target.value }))} />
+      <TextInput required placeholder={t("serviq.materialCode")} value={material.material_code} onChange={(e) => setMaterial((v) => ({ ...v, material_code: e.target.value }))} />
+      <TextInput required placeholder={t("serviq.materialName")} value={material.material_name} onChange={(e) => setMaterial((v) => ({ ...v, material_name: e.target.value }))} />
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
         <TextInput required type="number" min="0.001" step="0.001" value={material.quantity} onChange={(e) => setMaterial((v) => ({ ...v, quantity: Number(e.target.value) }))} />
         <TextInput required value={material.unit} onChange={(e) => setMaterial((v) => ({ ...v, unit: e.target.value }))} />
       </div>
       <SelectInput value={material.status} onChange={(e) => setMaterial((v) => ({ ...v, status: e.target.value as ServiqMaterialStatus }))}>
-        <option value="USED">Used</option>
-        <option value="RETURNED">Returned</option>
+        <option value="USED">{t("serviq.used")}</option>
+        <option value="RETURNED">{t("serviq.returned")}</option>
       </SelectInput>
-      <TextInput placeholder="Warehouse location" value={material.warehouse_location} onChange={(e) => setMaterial((v) => ({ ...v, warehouse_location: e.target.value }))} />
+      <TextInput placeholder={t("serviq.warehouseLocation")} value={material.warehouse_location} onChange={(e) => setMaterial((v) => ({ ...v, warehouse_location: e.target.value }))} />
     </ActionWithList>
   );
+}
+
+function materialStatusLabel(status: ServiqMaterialStatus, t: (key: MessageKey) => string) {
+  const labels: Record<ServiqMaterialStatus, MessageKey> = {
+    USED: "serviq.used",
+    RETURNED: "serviq.returned",
+  };
+  return t(labels[status]);
 }
 
 function TimeTab({
@@ -789,6 +824,8 @@ function TimeTab({
   canMutate,
   busy,
   onSubmit,
+  t,
+  localeName,
 }: {
   selected: ServiqWorkOrder;
   timeEntry: {
@@ -803,22 +840,25 @@ function TimeTab({
   canMutate: boolean;
   busy: boolean;
   onSubmit: (e: FormEvent) => void;
+  t: (key: MessageKey, vars?: Record<string, string | number>) => string;
+  localeName: string;
 }) {
   return (
     <ActionWithList
-      title="Time tracking"
+      title={t("serviq.timeTracking")}
       onSubmit={onSubmit}
-      submitLabel="Save time"
+      submitLabel={t("serviq.saveTime")}
       disabled={!canMutate || busy}
       records={selected.time_entries.map((item) => (
-        <Row key={item.id} left={`${item.labor_hours ?? 0} labor hours`} right={compactDate(item.arrival_time)} meta={item.technician_comment ?? ""} />
+        <Row key={item.id} left={t("serviq.laborHours", { hours: item.labor_hours ?? 0 })} right={compactDate(item.arrival_time, localeName)} meta={item.technician_comment ?? ""} />
       ))}
-      empty="No time entries recorded."
+      empty={t("serviq.noTimeEntries")}
+      t={t}
     >
-      <Field label="Arrival">
+      <Field label={t("serviq.arrival")}>
         <TextInput type="datetime-local" value={timeEntry.arrival_time} onChange={(e) => setTimeEntry((v) => ({ ...v, arrival_time: e.target.value }))} />
       </Field>
-      <Field label="Departure">
+      <Field label={t("serviq.departure")}>
         <TextInput type="datetime-local" value={timeEntry.departure_time} onChange={(e) => setTimeEntry((v) => ({ ...v, departure_time: e.target.value }))} />
       </Field>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
@@ -826,7 +866,7 @@ function TimeTab({
         <TextInput type="number" min="0" step="0.25" value={timeEntry.travel_hours} onChange={(e) => setTimeEntry((v) => ({ ...v, travel_hours: Number(e.target.value) }))} />
         <TextInput type="number" min="0" step="0.25" value={timeEntry.waiting_hours} onChange={(e) => setTimeEntry((v) => ({ ...v, waiting_hours: Number(e.target.value) }))} />
       </div>
-      <TextArea placeholder="Technician comment" value={timeEntry.technician_comment} onChange={(e) => setTimeEntry((v) => ({ ...v, technician_comment: e.target.value }))} />
+      <TextArea placeholder={t("serviq.technicianComment")} value={timeEntry.technician_comment} onChange={(e) => setTimeEntry((v) => ({ ...v, technician_comment: e.target.value }))} />
     </ActionWithList>
   );
 }
@@ -838,6 +878,7 @@ function SignatureTab({
   canMutate,
   busy,
   onSubmit,
+  t,
 }: {
   selected: ServiqWorkOrder;
   signature: { signer_type: "CUSTOMER" | "TECHNICIAN"; signer_name: string; image_data_url: string };
@@ -845,26 +886,29 @@ function SignatureTab({
   canMutate: boolean;
   busy: boolean;
   onSubmit: (e: FormEvent) => void;
+  t: (key: MessageKey) => string;
 }) {
   return (
     <ActionWithList
-      title="Signature"
+      title={t("serviq.signature")}
       onSubmit={onSubmit}
-      submitLabel="Save signature"
+      submitLabel={t("serviq.saveSignature")}
       disabled={!canMutate || busy}
       records={selected.signatures.map((item) => (
-        <Row key={item.id} left={item.signer_name} right={item.signer_type} meta={item.image_data_url ? "Captured signature" : "Signature without image"} />
+        <Row key={item.id} left={item.signer_name} right={item.signer_type} meta={item.image_data_url ? t("serviq.capturedSignature") : t("serviq.signatureWithoutImage")} />
       ))}
-      empty="No signatures recorded."
+      empty={t("serviq.noSignatures")}
+      t={t}
     >
       <SelectInput value={signature.signer_type} onChange={(e) => setSignature((v) => ({ ...v, signer_type: e.target.value as "CUSTOMER" | "TECHNICIAN" }))}>
-        <option value="CUSTOMER">Customer</option>
-        <option value="TECHNICIAN">Technician</option>
+        <option value="CUSTOMER">{t("serviq.customer")}</option>
+        <option value="TECHNICIAN">{t("serviq.technician")}</option>
       </SelectInput>
-      <TextInput required placeholder="Signer name" value={signature.signer_name} onChange={(e) => setSignature((v) => ({ ...v, signer_name: e.target.value }))} />
+      <TextInput required placeholder={t("serviq.signerName")} value={signature.signer_name} onChange={(e) => setSignature((v) => ({ ...v, signer_name: e.target.value }))} />
       <SignatureCanvas
         value={signature.image_data_url}
         onChange={(value) => setSignature((v) => ({ ...v, image_data_url: value }))}
+        clearLabel={t("serviq.clearSignature")}
       />
     </ActionWithList>
   );
@@ -873,9 +917,11 @@ function SignatureTab({
 function SignatureCanvas({
   value,
   onChange,
+  clearLabel,
 }: {
   value: string;
   onChange: (value: string) => void;
+  clearLabel: string;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawingRef = useRef(false);
@@ -948,7 +994,7 @@ function SignatureCanvas({
         }}
       />
       <Button type="button" variant="secondary" onClick={clear} disabled={!value}>
-        Clear signature
+        {clearLabel}
       </Button>
     </div>
   );
@@ -961,6 +1007,8 @@ function PaymentTab({
   canMutate,
   busy,
   onSubmit,
+  t,
+  localeName,
 }: {
   selected: ServiqWorkOrder;
   payment: {
@@ -974,63 +1022,89 @@ function PaymentTab({
   canMutate: boolean;
   busy: boolean;
   onSubmit: (e: FormEvent) => void;
+  t: (key: MessageKey) => string;
+  localeName: string;
 }) {
   return (
     <ActionWithList
-      title="Payment"
+      title={t("serviq.payment")}
       onSubmit={onSubmit}
-      submitLabel="Record payment"
+      submitLabel={t("serviq.recordPayment")}
       disabled={!canMutate || busy}
       records={selected.payments.map((item) => (
-        <Row key={item.id} left={item.method.replace("_", " ")} right={money(item.amount, item.currency)} meta={item.status.replace("_", " ")} />
+        <Row key={item.id} left={paymentMethodLabel(item.method, t)} right={money(item.amount, localeName, item.currency)} meta={paymentStatusLabel(item.status, t)} />
       ))}
-      empty="No payments recorded."
+      empty={t("serviq.noPayments")}
+      t={t}
     >
       <SelectInput value={payment.method} onChange={(e) => setPayment((v) => ({ ...v, method: e.target.value as ServiqPaymentMethod }))}>
-        <option value="CURRENT_ACCOUNT">Bill to account</option>
-        <option value="CASH">Cash</option>
-        <option value="CREDIT_CARD">Credit card</option>
-        <option value="VIRTUAL_POS">Virtual POS</option>
+        <option value="CURRENT_ACCOUNT">{t("serviq.billToAccount")}</option>
+        <option value="CASH">{t("serviq.cash")}</option>
+        <option value="CREDIT_CARD">{t("serviq.creditCard")}</option>
+        <option value="VIRTUAL_POS">{t("serviq.virtualPos")}</option>
       </SelectInput>
       <SelectInput value={payment.status} onChange={(e) => setPayment((v) => ({ ...v, status: e.target.value as ServiqPaymentStatus }))}>
-        <option value="CURRENT_ACCOUNT">Bill to account</option>
-        <option value="PAYMENT_PENDING">Payment pending</option>
-        <option value="PAID">Paid</option>
-        <option value="UNPAID">Unpaid</option>
+        <option value="CURRENT_ACCOUNT">{t("serviq.billToAccount")}</option>
+        <option value="PAYMENT_PENDING">{t("serviq.paymentPending")}</option>
+        <option value="PAID">{t("serviq.paid")}</option>
+        <option value="UNPAID">{t("serviq.unpaid")}</option>
       </SelectInput>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 90px", gap: 8 }}>
         <TextInput type="number" min="0" step="0.01" value={payment.amount} onChange={(e) => setPayment((v) => ({ ...v, amount: Number(e.target.value) }))} />
         <TextInput value={payment.currency} onChange={(e) => setPayment((v) => ({ ...v, currency: e.target.value }))} />
       </div>
-      <TextInput placeholder="Transaction/reference no" value={payment.transaction_id} onChange={(e) => setPayment((v) => ({ ...v, transaction_id: e.target.value }))} />
+      <TextInput placeholder={t("serviq.transactionRef")} value={payment.transaction_id} onChange={(e) => setPayment((v) => ({ ...v, transaction_id: e.target.value }))} />
     </ActionWithList>
   );
+}
+
+function paymentMethodLabel(method: ServiqPaymentMethod, t: (key: MessageKey) => string) {
+  const labels: Record<ServiqPaymentMethod, MessageKey> = {
+    CURRENT_ACCOUNT: "serviq.billToAccount",
+    CASH: "serviq.cash",
+    CREDIT_CARD: "serviq.creditCard",
+    VIRTUAL_POS: "serviq.virtualPos",
+  };
+  return t(labels[method]);
+}
+
+function paymentStatusLabel(status: ServiqPaymentStatus, t: (key: MessageKey) => string) {
+  const labels: Record<ServiqPaymentStatus, MessageKey> = {
+    CURRENT_ACCOUNT: "serviq.billToAccount",
+    PAYMENT_PENDING: "serviq.paymentPending",
+    PAID: "serviq.paid",
+    UNPAID: "serviq.unpaid",
+    FAILED: "serviq.failed",
+  };
+  return t(labels[status]);
 }
 
 function AssistantTab({
   summary,
   busy,
   onRefresh,
+  t,
 }: {
   summary: ServiqAssistantSummary | null;
   busy: boolean;
   onRefresh: () => void;
+  t: (key: MessageKey) => string;
 }) {
   return (
     <Card>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
-        <h3 style={{ margin: 0, fontSize: 15 }}>Technician assistant</h3>
-        <Button disabled={busy} onClick={onRefresh}>Generate summary</Button>
+        <h3 style={{ margin: 0, fontSize: 15 }}>{t("serviq.technicianAssistant")}</h3>
+        <Button disabled={busy} onClick={onRefresh}>{t("serviq.generateSummary")}</Button>
       </div>
       {!summary ? (
         <p style={{ color: "#777", fontSize: 14, margin: "12px 0 0" }}>
-          Generate a work-order summary grounded in the recorded job data.
+          {t("serviq.assistantIntro")}
         </p>
       ) : (
         <div style={{ display: "grid", gap: 14, marginTop: 14 }}>
           <p style={{ margin: 0, color: "#222", fontSize: 14, lineHeight: 1.6 }}>{summary.summary}</p>
           <div>
-            <h4 style={{ margin: "0 0 8px", fontSize: 13 }}>Next actions</h4>
+            <h4 style={{ margin: "0 0 8px", fontSize: 13 }}>{t("serviq.nextActions")}</h4>
             <ul style={{ margin: 0, paddingLeft: 18, color: "#444", fontSize: 14 }}>
               {summary.next_actions.map((item) => <li key={item}>{item}</li>)}
             </ul>
@@ -1051,6 +1125,7 @@ function ActionWithList({
   disabled,
   records,
   empty,
+  t,
 }: {
   title: string;
   children: ReactNode;
@@ -1059,6 +1134,7 @@ function ActionWithList({
   disabled: boolean;
   records: ReactNode[];
   empty: string;
+  t: (key: MessageKey) => string;
 }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 340px) minmax(0, 1fr)", gap: 14 }}>
@@ -1070,7 +1146,7 @@ function ActionWithList({
         </form>
       </Card>
       <Card>
-        <h3 style={{ margin: "0 0 10px", fontSize: 15 }}>Records</h3>
+        <h3 style={{ margin: "0 0 10px", fontSize: 15 }}>{t("common.records")}</h3>
         {records.length === 0 ? <p style={{ margin: 0, color: "#999", fontSize: 13 }}>{empty}</p> : <div style={{ display: "grid", gap: 9 }}>{records}</div>}
       </Card>
     </div>
