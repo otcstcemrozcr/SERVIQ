@@ -25,6 +25,7 @@ import { Badge, Button, Card, Field, SelectInput, TextArea, TextInput } from "@/
 import { LanguageToggle, localeTag, useLocale, useT, type MessageKey } from "@/lib/i18n";
 
 const DEFAULT_ORG_ID = "11111111-1111-1111-1111-111111111111";
+const DEMO_ORDERS_KEY = "serviq_demo_orders";
 
 type Tab = "details" | "materials" | "time" | "sign" | "payment" | "assistant";
 type NewWorkOrderFormState = {
@@ -108,6 +109,19 @@ function scheduledInputToIso(date: string, time: string) {
   if (!date) return null;
   const normalizedTime = /^\d{2}:\d{2}$/.test(time) ? time : "09:00";
   return new Date(`${date}T${normalizedTime}`).toISOString();
+}
+
+function loadDemoOrders() {
+  if (typeof window === "undefined") return [];
+  try {
+    return JSON.parse(localStorage.getItem(DEMO_ORDERS_KEY) ?? "[]") as ServiqWorkOrder[];
+  } catch {
+    return [];
+  }
+}
+
+function saveDemoOrders(orders: ServiqWorkOrder[]) {
+  localStorage.setItem(DEMO_ORDERS_KEY, JSON.stringify(orders));
 }
 
 function money(value: number | null, locale: string, currency = "TRY") {
@@ -216,17 +230,21 @@ export default function ServiqPage() {
     setError("");
     try {
       const data = await listServiqWorkOrders();
-      setOrders(data);
+      const merged = [...loadDemoOrders(), ...data];
+      setOrders(merged);
       if (nextSelectedId) setSelectedId(nextSelectedId);
       else {
         const storedSelected = localStorage.getItem("serviq_selected_order");
-        if (storedSelected && data.some((order) => order.id === storedSelected)) {
+        if (storedSelected && merged.some((order) => order.id === storedSelected)) {
           setSelectedId(storedSelected);
-        } else if (!selectedId && data[0]) {
-          setSelectedId(data[0].id);
+        } else if (!selectedId && merged[0]) {
+          setSelectedId(merged[0].id);
         }
       }
     } catch (e) {
+      const demoOrders = loadDemoOrders();
+      setOrders(demoOrders);
+      if (demoOrders[0] && !selectedId) setSelectedId(demoOrders[0].id);
       setError(friendlyError(e instanceof Error ? e.message : t("error.loadOrders"), t));
     } finally {
       setLoading(false);
@@ -271,15 +289,7 @@ export default function ServiqPage() {
 
   async function submitNewOrder(e: FormEvent) {
     e.preventDefault();
-    if (!hasApiKey) {
-      setShowConnection(true);
-      setError(t("serviq.connectionMissing"));
-      return;
-    }
-    await runAction(
-      "create",
-      async () => {
-        const created = await createServiqWorkOrder({
+    const body = {
           order_no: newOrder.orderNo,
           title: newOrder.title,
           priority: newOrder.priority || null,
@@ -303,7 +313,71 @@ export default function ServiqPage() {
           technician: newOrder.technicianName
             ? { name: newOrder.technicianName, phone: newOrder.technicianPhone || null }
             : null,
-        });
+        };
+    if (!hasApiKey) {
+      const now = new Date().toISOString();
+      const created: ServiqWorkOrder = {
+        id: `demo-${Date.now()}`,
+        order_no: body.order_no,
+        title: body.title,
+        status: "OPEN",
+        priority: body.priority,
+        scheduled_for: body.scheduled_for,
+        visit_notes: body.visit_notes,
+        technician_comment: null,
+        external_erp_id: null,
+        erp_sync_status: "DEMO",
+        customer: {
+          id: `demo-customer-${Date.now()}`,
+          name: body.customer.name,
+          code: null,
+          email: body.customer.email,
+          phone: body.customer.phone,
+          address: body.customer.address,
+          is_current_account: body.customer.is_current_account ?? false,
+          external_erp_id: null,
+        },
+        equipment: body.equipment
+          ? {
+              id: `demo-equipment-${Date.now()}`,
+              name: body.equipment.name,
+              model: body.equipment.model,
+              serial_number: body.equipment.serial_number,
+              warranty_status: body.equipment.warranty_status,
+              external_erp_id: null,
+            }
+          : null,
+        technician: body.technician
+          ? {
+              id: `demo-technician-${body.technician.name}`,
+              name: body.technician.name,
+              email: null,
+              phone: body.technician.phone ?? null,
+              external_erp_id: null,
+            }
+          : null,
+        materials: [],
+        time_entries: [],
+        signatures: [],
+        payments: [],
+        created_at: now,
+        updated_at: now,
+      };
+      const nextOrders = [created, ...loadDemoOrders()];
+      saveDemoOrders(nextOrders);
+      setOrders((current) => [created, ...current]);
+      setSelectedId(created.id);
+      localStorage.setItem("serviq_selected_order", created.id);
+      setShowCreate(false);
+      setShowConnection(false);
+      setError("");
+      setNotice(t("serviq.demoSaved"));
+      return;
+    }
+    await runAction(
+      "create",
+      async () => {
+        const created = await createServiqWorkOrder(body);
         setOrders((current) => [created, ...current]);
         setSelectedId(created.id);
         localStorage.setItem("serviq_selected_order", created.id);
