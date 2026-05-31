@@ -31,7 +31,8 @@ type NewWorkOrderFormState = {
   orderNo: string;
   title: string;
   priority: string;
-  scheduledFor: string;
+  scheduledDate: string;
+  scheduledTime: string;
   visitNotes: string;
   customerName: string;
   customerEmail: string;
@@ -70,6 +71,26 @@ function toDatetimeLocal(value: Date) {
 
 function fromDatetimeLocal(value: string) {
   return value ? new Date(value).toISOString() : null;
+}
+
+function normalizeScheduledDate(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 8);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}.${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}.${digits.slice(2, 4)}.${digits.slice(4)}`;
+}
+
+function normalizeScheduledTime(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 4);
+  if (digits.length <= 2) return digits;
+  return `${digits.slice(0, 2)}:${digits.slice(2)}`;
+}
+
+function scheduledInputToIso(date: string, time: string) {
+  const [day, month, year] = date.split(".");
+  if (!day || !month || !year || year.length !== 4) return null;
+  const normalizedTime = /^\d{2}:\d{2}$/.test(time) ? time : "09:00";
+  return new Date(`${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}T${normalizedTime}`).toISOString();
 }
 
 function money(value: number | null, locale: string, currency = "TRY") {
@@ -121,7 +142,8 @@ export default function ServiqPage() {
     orderNo: "",
     title: "",
     priority: "NORMAL",
-    scheduledFor: "",
+    scheduledDate: "",
+    scheduledTime: "",
     visitNotes: "",
     customerName: "",
     customerEmail: "",
@@ -244,7 +266,7 @@ export default function ServiqPage() {
           order_no: newOrder.orderNo,
           title: newOrder.title,
           priority: newOrder.priority || null,
-          scheduled_for: newOrder.scheduledFor ? new Date(newOrder.scheduledFor).toISOString() : null,
+          scheduled_for: scheduledInputToIso(newOrder.scheduledDate, newOrder.scheduledTime),
           visit_notes: newOrder.visitNotes || null,
           customer: {
             name: newOrder.customerName,
@@ -686,11 +708,32 @@ function CreateWorkOrderForm({
             </SelectInput>
           </Field>
           <Field label={t("serviq.scheduledFor")}>
-            <TextInput
-              type="datetime-local"
-              value={values.scheduledFor}
-              onChange={(e) => setValues((v) => ({ ...v, scheduledFor: e.target.value }))}
-            />
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 112px", gap: 8 }}>
+              <TextInput
+                inputMode="numeric"
+                placeholder={t("serviq.scheduledDatePlaceholder")}
+                aria-label={t("serviq.scheduledDate")}
+                value={values.scheduledDate}
+                onChange={(e) =>
+                  setValues((v) => ({
+                    ...v,
+                    scheduledDate: normalizeScheduledDate(e.target.value),
+                  }))
+                }
+              />
+              <TextInput
+                inputMode="numeric"
+                placeholder={t("serviq.scheduledTimePlaceholder")}
+                aria-label={t("serviq.scheduledTime")}
+                value={values.scheduledTime}
+                onChange={(e) =>
+                  setValues((v) => ({
+                    ...v,
+                    scheduledTime: normalizeScheduledTime(e.target.value),
+                  }))
+                }
+              />
+            </div>
           </Field>
           <Field label={t("serviq.customer")}>
             <TextInput required value={values.customerName} onChange={(e) => setValues((v) => ({ ...v, customerName: e.target.value }))} />
