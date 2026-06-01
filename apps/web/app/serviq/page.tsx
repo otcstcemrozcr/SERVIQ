@@ -144,6 +144,16 @@ function StatusPill({ status, t }: { status: string; t: (key: MessageKey) => str
   return <Badge color={statusColor[status] ?? "#444"}>{t(key)}</Badge>;
 }
 
+function LabelLine({ label, value }: { label: string; value: string | null | undefined }) {
+  if (!value) return null;
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "92px minmax(0, 1fr)", gap: 8, alignItems: "baseline" }}>
+      <span style={{ color: "#888", fontSize: 11, fontWeight: 800 }}>{label}</span>
+      <span style={{ color: "#222", fontSize: 12, fontWeight: 700, overflowWrap: "anywhere" }}>{value}</span>
+    </div>
+  );
+}
+
 const tabLabels: Record<Tab, MessageKey> = {
   details: "serviq.details",
   materials: "serviq.materials",
@@ -595,12 +605,18 @@ export default function ServiqPage() {
                   cursor: "pointer",
                 }}
               >
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                  <strong style={{ color: "#111", fontSize: 14 }}>{order.order_no}</strong>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
+                  <strong style={{ color: "#111", fontSize: 13 }}>{t("serviq.productLabel")}</strong>
                   <StatusPill status={order.status} t={t} />
                 </div>
-                <p style={{ margin: "7px 0 2px", color: "#222", fontSize: 14 }}>{order.title}</p>
-                <p style={{ margin: 0, color: "#777", fontSize: 12 }}>{order.customer.name}</p>
+                <div style={{ display: "grid", gap: 6, marginTop: 10 }}>
+                  <LabelLine label={t("serviq.orderNo")} value={order.order_no} />
+                  <LabelLine label={t("serviq.customer")} value={order.customer.name} />
+                  <LabelLine label={t("serviq.equipment")} value={order.equipment?.name} />
+                  <LabelLine label={t("serviq.serialNo")} value={order.equipment?.serial_number} />
+                  <LabelLine label={t("serviq.orderDateOpened")} value={compactDate(order.created_at, localeName)} />
+                  <LabelLine label={t("serviq.technician")} value={order.technician?.name} />
+                </div>
               </button>
             ))
           )}
