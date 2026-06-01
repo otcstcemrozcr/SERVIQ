@@ -266,7 +266,6 @@ export default function ServiqPage() {
     const storedApiKey = localStorage.getItem("serviq_api_key") ?? "";
     localStorage.setItem("serviq_org_id", storedOrgId);
     setAuth({ orgId: storedOrgId, apiKey: storedApiKey });
-    if (!storedApiKey) setShowConnection(true);
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -545,6 +544,7 @@ export default function ServiqPage() {
         onRefresh={() => refresh(selected?.id)}
         onNew={() => setShowCreate((value) => !value)}
         onConnection={() => setShowConnection((value) => !value)}
+        hasApiKey={hasApiKey}
         t={t}
       />
 
@@ -571,7 +571,30 @@ export default function ServiqPage() {
         </Card>
       )}
 
-      {showCreate && <CreateWorkOrderForm values={newOrder} setValues={setNewOrder} busy={Boolean(busy) || !hasApiKey} onSubmit={submitNewOrder} t={t} />}
+      {!showConnection && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            marginTop: 14,
+            padding: "10px 12px",
+            border: "1px solid #e8e8e8",
+            borderRadius: 8,
+            background: hasApiKey ? "#f0fdf4" : "#fff7ed",
+            color: hasApiKey ? "#166534" : "#9a3412",
+            fontSize: 13,
+            fontWeight: 700,
+          }}
+        >
+          <span>{hasApiKey ? t("serviq.liveApi") : t("serviq.demoMode")}</span>
+          <span style={{ color: "#666", fontWeight: 500 }}>
+            {hasApiKey ? t("serviq.liveApiInfo") : t("serviq.demoModeInfo")}
+          </span>
+        </div>
+      )}
+
+      {showCreate && <CreateWorkOrderForm values={newOrder} setValues={setNewOrder} busy={Boolean(busy)} onSubmit={submitNewOrder} t={t} />}
 
       {notice && <p style={{ color: "#166534", fontSize: 13, margin: "12px 0 0" }}>{notice}</p>}
       {error && <p style={{ color: "#b91c1c", fontSize: 13, margin: "12px 0 0" }}>{error}</p>}
@@ -735,6 +758,7 @@ function Header({
   onRefresh,
   onNew,
   onConnection,
+  hasApiKey,
   t,
 }: {
   selected: ServiqWorkOrder | null;
@@ -743,6 +767,7 @@ function Header({
   onRefresh: () => void;
   onNew: () => void;
   onConnection: () => void;
+  hasApiKey: boolean;
   t: (key: MessageKey, vars?: Record<string, string | number>) => string;
 }) {
   return (
@@ -774,7 +799,7 @@ function Header({
         >
           {t("nav.dashboard")}
         </a>
-        <Button variant="secondary" onClick={onConnection}>{t("nav.connection")}</Button>
+        <Button variant="secondary" onClick={onConnection}>{hasApiKey ? t("serviq.liveApi") : t("serviq.demoMode")}</Button>
         <Button variant="secondary" onClick={onRefresh} disabled={loading || busy}>{t("common.refresh")}</Button>
         <Button onClick={onNew}>{t("common.new")}</Button>
       </div>
