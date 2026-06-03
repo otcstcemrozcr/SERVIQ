@@ -14,6 +14,7 @@ os.environ.setdefault("SUPABASE_JWT_SECRET", "test-jwt-secret-that-is-long-enoug
 os.environ.setdefault("OPENOPS_SERVICE_USER_ID", "service-user")
 
 from serviq.db.models import Base  # noqa: E402
+from serviq.db.session import _normalize_database_url  # noqa: E402
 from serviq.main import app  # noqa: E402
 from serviq.rbac import _clear as _clear_orgs  # noqa: E402
 from serviq.routes import serviq as serviq_routes  # noqa: E402
@@ -38,6 +39,21 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
 
 def _headers(org_id: str = "11111111-1111-1111-1111-111111111111") -> dict[str, str]:
     return {"X-API-Key": "test-sentinel-key", "X-Org-ID": org_id}
+
+
+@pytest.mark.parametrize(
+    ("raw_url", "expected"),
+    [
+        ("postgres://user:pass@example.test/db", "postgresql+psycopg://user:pass@example.test/db"),
+        (
+            '"postgresql://user:pass@example.test/db"',
+            "postgresql+psycopg://user:pass@example.test/db",
+        ),
+        ("sqlite://", "sqlite://"),
+    ],
+)
+def test_database_url_uses_psycopg_driver(raw_url: str, expected: str) -> None:
+    assert _normalize_database_url(raw_url) == expected
 
 
 def test_serviq_work_order_lifecycle(client: TestClient) -> None:

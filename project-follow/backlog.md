@@ -4,20 +4,19 @@ Bu dosya is sirasi icindir. Detayli kapsam icin `01-master-prompt.md`, son durum
 
 ## Now
 
-- Vercel Postgres setup.
-- DB migration: `supabase/migrations/` SQL dosyalarini yeni DB'ye uygula.
-- Backend deploy: `serviq-api`.
-- Frontend deploy: `serviq-web`.
-- CORS config: frontend domain'ini backend `CORS_ORIGINS` icine ekle.
-
-## Next
-
 - Work order detail page iyilestirmeleri.
 - Mobile technician workflow.
 - `SignaturePad`.
 - `PaymentModal`.
 - `MaterialUsageTable`.
 - `TimeTrackingForm`.
+
+## Next
+
+- Demo auth / connection UX'i sadeleştir.
+- Pydantic v2 `orm_mode` / `dict()` uyarilarini temizle.
+- Production smoke test script'i ekle.
+- Servis raporu PDF icerigini zenginlestir.
 
 ## Later
 

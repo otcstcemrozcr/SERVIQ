@@ -22,12 +22,20 @@ Iki ayri Vercel project kullan:
 
 ## 3. DB migration
 
-Migration dosyalari sirasiyla calistirilir:
+Yeni Neon DB icin aktif production semasi SQLAlchemy modellerinden olusturuldu:
+
+```text
+Base.metadata.create_all(get_engine())
+```
+
+Mevcut `supabase/migrations/` dosyalari Supabase'e ozel tablo, auth ve RLS bagimliliklari icerdigi icin Neon production DB'ye dogrudan uygulanmadi.
+
+Referans SQL dosyalari:
 
 1. `supabase/migrations/20260524000001_serviq.sql`
 2. `supabase/migrations/20260525000001_serviq_schedule.sql`
 
-Not: SQL'leri production DB uzerinde calistirmadan once hedef DB'nin dogru proje oldugunu kontrol et.
+Not: Gelecekte migration sistemi eklendiginde Alembic veya benzeri bir arac ile SQLAlchemy modellerinden kontrollu migration uretilmeli.
 
 ## 4. Backend env vars
 
@@ -66,11 +74,13 @@ NEXT_PUBLIC_API_URL=<backend-url>
 
 - `GET /health` -> `{"status":"ok"}`
 - `GET /serviq/work-orders` -> API key yoksa 401, dogru key ile liste.
+- `POST /serviq/work-orders` -> dogru key ile `201 Created`.
 - Frontend `/serviq` -> TR/EN toggle calisir.
 - Frontend `/serviq/dashboard` -> dashboard acilir.
 
 ## 8. Notlar
 
 - `OPENOPS_*` env isimleri simdilik korunur.
+- Neon `DATABASE_URL` degeri `postgresql://` geldigi icin backend SQLAlchemy tarafinda `postgresql+psycopg://` olarak normalize edilir.
 - MongoDB kapsam disidir; ana DB PostgreSQL olarak kalir.
 - Offline-first tam uygulanmayacak, ancak ileride local cache / sync queue icin mimari hazir tutulacak.

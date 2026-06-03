@@ -17,17 +17,23 @@ SERVIQ, OpenOps AI / OneOpenERP icin AI-native saha servis operasyon moduludur. 
 - i18n Stage A tamamlandi; dashboard TR/EN katalog sistemine tasindi.
 - i18n Stage B tamamlandi; ana is emri ekrani TR/EN katalog sistemine tasindi.
 - `tsc` ve `next build` dogrulamasi temiz.
-- Deploy planlamasi basladi.
+- Production deploy tamamlandi.
 - Database karari Vercel Postgres / Neon-based olarak kaydedildi.
 - Backend Vercel entrypoint ve deploy runbook hazirlandi.
+- Neon resource `serviq-postgres`, `serviq-api` projesine baglandi.
+- Production DB semasi SQLAlchemy modellerinden olusturuldu.
+- `serviq-api` production env vars ayarlandi ve `https://serviq-api.vercel.app` deploy edildi.
+- `serviq-web` production env vars ayarlandi ve `https://serviq-web.vercel.app/serviq` deploy edildi.
+- Canli smoke test: `GET /health`, authenticated `GET /serviq/work-orders` ve authenticated `POST /serviq/work-orders` basarili.
 
 ## Siradaki onerilen isler
 
-1. Vercel Postgres setup.
-2. `supabase/migrations/` SQL dosyalarini yeni DB'ye uygulama.
-3. Backend deploy: `serviq-api`.
-4. Frontend deploy: `serviq-web`.
-5. CORS konfigurasyonu.
+1. Work order detail page iyilestirmeleri.
+2. Mobile technician workflow.
+3. SignaturePad.
+4. PaymentModal.
+5. MaterialUsageTable.
+6. TimeTrackingForm.
 
 ## AI calisma kurallari
 
