@@ -23,7 +23,9 @@ def db_session():
         db.close()
 
 def generate_otp() -> str:
-    return str(random.randint(100000, 999999))
+    # Geçici olarak test için sabit kod dönüyoruz.
+    # Resend entegrasyonu yapılana kadar herkes "123456" ile girebilir.
+    return "123456"
 
 @router.post("/send-otp")
 def send_otp(body: SendOtpRequest, db: Session = Depends(db_session)) -> dict:
