@@ -13,7 +13,7 @@ from ..db.session import get_session
 from ..models import ServiqVerificationToken
 from ..schemas import SendOtpRequest, VerifyOtpRequest, VerifyOtpResponse
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(prefix="/serviq/auth", tags=["auth"])
 
 def db_session():
     db = get_session()

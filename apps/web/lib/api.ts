@@ -427,7 +427,7 @@ export async function getServiqAssistantSummary(
 // ---------------------------------------------------------------------------
 
 export async function sendOtp(email: string): Promise<{ success: boolean; message: string }> {
-  return apiFetch<{ success: boolean; message: string }>("/auth/send-otp", {
+  return apiFetch<{ success: boolean; message: string }>("/serviq/auth/send-otp", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email }),
@@ -435,7 +435,7 @@ export async function sendOtp(email: string): Promise<{ success: boolean; messag
 }
 
 export async function verifyOtp(email: string, code: string): Promise<{ success: boolean; api_key: string; message: string }> {
-  return apiFetch<{ success: boolean; api_key: string; message: string }>("/auth/verify-otp", {
+  return apiFetch<{ success: boolean; api_key: string; message: string }>("/serviq/auth/verify-otp", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, code }),
