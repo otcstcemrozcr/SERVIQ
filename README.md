@@ -2,11 +2,21 @@
 
 SERVIQ is the field service operations module planned for OpenOps AI / OneOpenERP.
 
-This initial commit contains the backend service skeleton:
+**Status:** Production deploy live on Vercel (backend + frontend + Neon Postgres). See [project-follow](project-follow/) for architecture, deploy runbook, and strategic ideas.
 
-- FastAPI route definitions for work orders, materials, time tracking, signatures, payments, reports, email, ERP sync placeholder, and AI assistant placeholder
-- SQLAlchemy domain models for PostgreSQL/Supabase-compatible persistence
+## Core Components
+
+- FastAPI backend: work orders, materials, time tracking, signatures, payments, reports, email, ERP sync, AI technician assistant
+- SQLAlchemy domain models for PostgreSQL/Neon persistence
 - Pydantic API schemas and workflow validation rules
-- Adapter extension points for payment, email, AI technician assistant, and ERP/SAP integrations
+- Adapter extension points for payment, email, AI, and ERP/SAP integrations
+- Next.js frontend with i18n (TR/EN), demo and authenticated modes
+- Live demo: `https://serviq-web.vercel.app/serviq` (no login required)
 
-The implementation is intentionally incomplete and should be integrated with the main OpenOps AI application before production use.
+## Documentation & Planning
+
+Start here: **[project-follow/](project-follow/)**
+- **[01-master-prompt.md](project-follow/01-master-prompt.md)** — Architecture brief (9 modules, data model, vision)
+- **[06-status-2026-06-04.md](project-follow/06-status-2026-06-04.md)** — Production deployment snapshot
+- **[07-ideas-2026-06-07.md](project-follow/07-ideas-2026-06-07.md)** — Post-MVP expansion ideas (product features, go-to-market, content)
+- **[backlog.md](project-follow/backlog.md)** — Work prioritization (Now/Next/Later)
