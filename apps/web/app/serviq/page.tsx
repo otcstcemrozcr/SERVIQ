@@ -67,6 +67,51 @@ function StatusPill({ status, t }: { status: string; t: (key: MessageKey) => str
   return <Badge color={statusColor[status] ?? colors.muted}>{t(key)}</Badge>;
 }
 
+function BusinessProcessFlow({ currentStatus, t }: { currentStatus: string; t: any }) {
+  const stages = [
+    { id: "OPEN", label: t("status.OPEN" as MessageKey) || "Open" },
+    { id: "IN_PROGRESS", label: t("status.IN_PROGRESS" as MessageKey) || "In Progress" },
+    { id: "COMPLETED", label: t("status.COMPLETED" as MessageKey) || "Completed" }
+  ];
+  const currentIndex = stages.findIndex(s => s.id === currentStatus);
+
+  if (currentStatus === "CANCELLED") {
+    return <div style={{ marginTop: 16 }}><StatusPill status={currentStatus} t={t} /></div>;
+  }
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", marginTop: 16, overflowX: "auto", paddingBottom: 4 }}>
+      {stages.map((stage, i) => {
+        const isPast = currentIndex > i;
+        const isActive = currentIndex === i;
+        const color = isActive ? colors.primary : isPast ? colors.success : colors.muted;
+        const border = isActive ? `2px solid ${colors.primary}` : `1px solid ${colors.border}`;
+        
+        return (
+          <div key={stage.id} style={{ display: "flex", alignItems: "center" }}>
+            <div style={{ 
+              display: "flex", alignItems: "center", gap: 8, 
+              padding: "6px 16px", 
+              borderRadius: 20, 
+              background: isActive ? "#fff" : isPast ? `${colors.success}10` : "transparent",
+              color: color,
+              fontWeight: isActive ? 700 : 500,
+              fontSize: 12,
+              border: border,
+              boxShadow: isActive ? "0 2px 4px rgba(0,0,0,0.05)" : "none"
+            }}>
+              {stage.label}
+            </div>
+            {i < stages.length - 1 && (
+              <div style={{ width: 24, height: 2, background: isPast ? colors.success : colors.border, margin: "0 4px" }} />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 const tabLabels: Record<Tab, { label: MessageKey; icon: React.ReactNode }> = {
   details: { label: "serviq.details", icon: <Briefcase size={16} /> },
   materials: { label: "serviq.materials", icon: <Package size={16} /> },
@@ -394,13 +439,13 @@ export default function ServiqPage() {
           ) : (
             <div style={{ display: "grid", gap: 24, maxWidth: 1200, margin: "0 auto", width: "100%" }}>
               {/* Header */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 8 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
                 <div>
-                  <h2 style={{ margin: "0 0 8px 0", fontSize: 24, fontWeight: 700, color: colors.text, letterSpacing: "-0.01em" }}>{selected.title}</h2>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <span style={{ fontSize: 14, color: colors.muted, fontWeight: 500 }}>{selected.order_no}</span>
-                    <StatusPill status={selected.status} t={t} />
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+                    <span style={{ fontSize: 14, color: colors.primary, fontWeight: 700 }}>{selected.order_no}</span>
                   </div>
+                  <h2 style={{ margin: "0 0 8px 0", fontSize: 24, fontWeight: 700, color: colors.text, letterSpacing: "-0.01em" }}>{selected.title}</h2>
+                  <BusinessProcessFlow currentStatus={selected.status} t={t} />
                 </div>
                 
                 {/* Desktop Actions */}

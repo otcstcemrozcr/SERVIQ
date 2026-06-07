@@ -8,15 +8,15 @@ import type {
 } from "react";
 
 export const colors = {
-  border: "#e2e8f0", // Slate 200
-  text: "#1e293b", // Slate 800
-  muted: "#64748b", // Slate 500
-  soft: "#f8fafc", // Slate 50
-  primary: "#3b82f6", // Blue 500
-  primaryHover: "#2563eb", // Blue 600
-  success: "#10b981", // Emerald 500
-  danger: "#ef4444", // Red 500
-  warning: "#f59e0b", // Amber 500
+  border: "#EDEBE9", // Fluent Border
+  text: "#323130", // Fluent Text Primary
+  muted: "#605E5C", // Fluent Text Secondary
+  soft: "#F3F2F1", // Fluent Gray Background
+  primary: "#0078D4", // Microsoft Blue
+  primaryHover: "#106EBE", // Microsoft Blue Hover
+  success: "#107C10", // Fluent Green
+  danger: "#D13438", // Fluent Red
+  warning: "#D83B01", // Fluent Amber
 };
 
 export function Card({ children, style, id, className }: { children: ReactNode; style?: CSSProperties; id?: string; className?: string }) {
@@ -63,8 +63,8 @@ export function Button({
         alignItems: "center",
         justifyContent: "center",
         gap: 8,
-        borderRadius: 4,
-        padding: "8px 16px",
+        borderRadius: 2,
+        padding: "6px 16px",
         fontSize: 13,
         fontWeight: 600,
         fontFamily: "inherit",
@@ -82,7 +82,7 @@ export function Button({
 
 export function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <label style={{ display: "grid", gap: 6, fontSize: 13, color: colors.text, fontWeight: 600 }}>
+    <label style={{ display: "grid", gap: 4, fontSize: 12, color: colors.text, fontWeight: 600 }}>
       {label}
       {children}
     </label>
@@ -140,12 +140,13 @@ export function Badge({
 const controlStyle: CSSProperties = {
   width: "100%",
   boxSizing: "border-box",
-  border: `1px solid ${colors.border}`,
-  borderRadius: 4,
-  padding: "8px 12px",
+  border: "1px solid transparent",
+  borderBottom: `1px solid #8A8886`,
+  borderRadius: "2px 2px 0 0",
+  padding: "6px 12px",
   fontSize: 14,
   color: colors.text,
-  background: "#fff",
-  transition: "border-color 0.2s",
+  background: "#F3F2F1",
+  transition: "all 0.2s",
   outline: "none",
 };
