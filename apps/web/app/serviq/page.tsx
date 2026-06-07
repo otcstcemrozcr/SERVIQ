@@ -341,7 +341,7 @@ export default function ServiqPage() {
           <button className="mobile-only" onClick={() => setShowList(!showList)} style={{ background: "transparent", border: "none", color: colors.text, cursor: "pointer" }}>
             <Menu size={24} />
           </button>
-          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, letterSpacing: "-0.02em", color: colors.text }}>SERVIQ <span style={{ color: colors.primary }}>AI</span></h1>
+          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, letterSpacing: "-0.04em", color: colors.text, fontFamily: "Inter, system-ui, sans-serif" }}>ServiQ <span style={{ color: colors.primary, fontWeight: 700 }}>AI</span></h1>
         </div>
         <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
           <LanguageToggle />

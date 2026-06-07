@@ -45,8 +45,8 @@ export default function LoginPage() {
         }} />
 
         <div style={{ position: "relative", zIndex: 10 }}>
-          <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
-            SERVIQ <span style={{ color: "#3b82f6" }}>AI</span>
+          <h1 style={{ fontSize: 20, fontWeight: 800, margin: 0, display: "flex", alignItems: "center", gap: 6, letterSpacing: "-0.04em", fontFamily: "Inter, system-ui, sans-serif" }}>
+            ServiQ <span style={{ color: "#3b82f6", fontWeight: 700 }}>AI</span>
           </h1>
 
           <div style={{ marginTop: "12vh", maxWidth: 480 }}>
@@ -133,7 +133,7 @@ export default function LoginPage() {
             </form>
 
             <div style={{ marginTop: 24, textAlign: "center", fontSize: 13, color: "#64748b" }}>
-              New to SERVIQ AI? <a href="#" style={{ color: "#3b82f6", textDecoration: "none" }}>Create an organization</a>
+              New to ServiQ AI? <a href="#" style={{ color: "#3b82f6", textDecoration: "none" }}>Create an organization</a>
             </div>
           </div>
         </div>
