@@ -7,22 +7,28 @@ import type {
   TextareaHTMLAttributes,
 } from "react";
 
-const colors = {
-  border: "#e8e8e8",
-  text: "#111",
-  muted: "#666",
-  soft: "#f8f9fa",
+export const colors = {
+  border: "#cbd5e1", // Slate 300
+  text: "#0f172a", // Slate 900
+  muted: "#64748b", // Slate 500
+  soft: "#f1f5f9", // Slate 100
+  primary: "#0369a1", // Enterprise Blue (Sky 700)
+  success: "#15803d", // Green 700
+  danger: "#b91c1c", // Red 700
+  warning: "#b45309", // Amber 700
 };
 
-export function Card({ children, style, id }: { children: ReactNode; style?: CSSProperties; id?: string }) {
+export function Card({ children, style, id, className }: { children: ReactNode; style?: CSSProperties; id?: string; className?: string }) {
   return (
     <div
       id={id}
+      className={className}
       style={{
         border: `1px solid ${colors.border}`,
-        borderRadius: 8,
-        padding: 14,
-        background: "#fff",
+        borderRadius: 6,
+        padding: 20,
+        background: "#ffffff",
+        boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05)",
         ...style,
       }}
     >
@@ -37,25 +43,33 @@ export function Button({
   style,
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: "primary" | "secondary" | "success";
+  variant?: "primary" | "secondary" | "success" | "outline" | "danger" | "ghost";
 }) {
   const palette = {
-    primary: { background: "#111", color: "#fff" },
-    secondary: { background: colors.soft, color: colors.text },
-    success: { background: "#16a34a", color: "#fff" },
+    primary: { background: colors.primary, color: "#fff", border: "1px solid transparent" },
+    secondary: { background: colors.soft, color: colors.text, border: `1px solid ${colors.border}` },
+    success: { background: colors.success, color: "#fff", border: "1px solid transparent" },
+    outline: { background: "transparent", color: colors.text, border: `1px solid ${colors.border}` },
+    danger: { background: colors.danger, color: "#fff", border: "1px solid transparent" },
+    ghost: { background: "transparent", color: colors.primary, border: "1px solid transparent" },
   }[variant];
 
   return (
     <button
       {...props}
       style={{
-        border: 0,
-        borderRadius: 8,
-        padding: "10px 14px",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 8,
+        borderRadius: 4,
+        padding: "8px 16px",
         fontSize: 13,
-        fontWeight: 700,
+        fontWeight: 600,
+        fontFamily: "inherit",
         cursor: props.disabled ? "not-allowed" : "pointer",
         opacity: props.disabled ? 0.6 : 1,
+        transition: "all 0.2s",
         ...palette,
         ...style,
       }}
@@ -67,7 +81,7 @@ export function Button({
 
 export function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <label style={{ display: "grid", gap: 6, fontSize: 12, color: "#555", fontWeight: 600 }}>
+    <label style={{ display: "grid", gap: 6, fontSize: 13, color: colors.text, fontWeight: 600 }}>
       {label}
       {children}
     </label>
@@ -89,22 +103,32 @@ export function SelectInput(props: SelectHTMLAttributes<HTMLSelectElement>) {
 export function Badge({
   children,
   color = colors.muted,
+  variant = "solid",
+  style
 }: {
   children: ReactNode;
   color?: string;
+  variant?: "solid" | "outline" | "soft";
+  style?: CSSProperties;
 }) {
+  const styles = {
+    solid: { background: color, color: "#fff", border: `1px solid ${color}` },
+    outline: { background: "transparent", color: color, border: `1px solid ${color}` },
+    soft: { background: `${color}18`, color: color, border: "1px solid transparent" },
+  }[variant];
+
   return (
     <span
       style={{
         display: "inline-flex",
         alignItems: "center",
         width: "fit-content",
-        borderRadius: 999,
-        padding: "4px 9px",
-        background: `${color}18`,
-        color,
+        borderRadius: 4,
+        padding: "2px 8px",
         fontSize: 11,
-        fontWeight: 800,
+        fontWeight: 700,
+        letterSpacing: "0.02em",
+        ...styles,
       }}
     >
       {children}
@@ -115,9 +139,12 @@ export function Badge({
 const controlStyle: CSSProperties = {
   width: "100%",
   boxSizing: "border-box",
-  border: `1px solid #ddd`,
-  borderRadius: 8,
-  padding: "10px 12px",
+  border: `1px solid ${colors.border}`,
+  borderRadius: 4,
+  padding: "8px 12px",
   fontSize: 14,
+  color: colors.text,
   background: "#fff",
+  transition: "border-color 0.2s",
+  outline: "none",
 };

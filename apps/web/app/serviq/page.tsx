@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { FormEvent, PointerEvent as ReactPointerEvent, ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { FormEvent } from "react";
 import {
   addServiqMaterial,
   addServiqSignature,
@@ -13,16 +13,24 @@ import {
   getServiqReport,
   listServiqWorkOrders,
   recordServiqPayment,
-  sendServiqEmail,
   startServiqWorkOrder,
+  sendServiqEmail,
   type ServiqMaterialStatus,
   type ServiqPaymentMethod,
   type ServiqPaymentStatus,
   type ServiqAssistantSummary,
   type ServiqWorkOrder,
 } from "@/lib/api";
-import { Badge, Button, Card, Field, SelectInput, TextArea, TextInput } from "@/components/ui";
+import { Badge, Button, Card, Field, SelectInput, TextArea, TextInput, colors } from "@/components/ui";
 import { LanguageToggle, localeTag, useLocale, useT, type MessageKey } from "@/lib/i18n";
+import { Briefcase, Settings, Plus, Menu, X, ArrowLeft, Play, CheckCircle, Package, Clock, PenTool, CreditCard, Sparkles, AlertCircle } from "lucide-react";
+
+import { WorkOrderDetail } from "../../components/serviq/WorkOrderDetail";
+import { MaterialUsageTable } from "../../components/serviq/MaterialUsageTable";
+import { TimeTrackingForm } from "../../components/serviq/TimeTrackingForm";
+import { SignatureCanvas } from "../../components/serviq/SignaturePad";
+import { PaymentModal } from "../../components/serviq/PaymentModal";
+import { AssistantTab } from "../../components/serviq/AssistantTab";
 
 const DEFAULT_ORG_ID = "11111111-1111-1111-1111-111111111111";
 const DEMO_ORDERS_KEY = "serviq_demo_orders";
@@ -49,42 +57,11 @@ type NewWorkOrderFormState = {
 };
 
 const statusColor: Record<string, string> = {
-  OPEN: "#2563eb",
-  IN_PROGRESS: "#f97316",
-  COMPLETED: "#16a34a",
-  CANCELLED: "#777",
+  OPEN: colors.primary,
+  IN_PROGRESS: colors.warning,
+  COMPLETED: colors.success,
+  CANCELLED: colors.muted,
 };
-
-const testTechnicians = [
-  { name: "Ahmet Yilmaz", phone: "+90 532 111 22 33" },
-  { name: "Mehmet Kaya", phone: "+90 533 222 33 44" },
-  { name: "Elif Demir", phone: "+90 534 333 44 55" },
-  { name: "Zeynep Celik", phone: "+90 535 444 55 66" },
-  { name: "Can Arslan", phone: "+90 536 555 66 77" },
-];
-
-const scheduleTimes = [
-  "08:00",
-  "08:30",
-  "09:00",
-  "09:30",
-  "10:00",
-  "10:30",
-  "11:00",
-  "11:30",
-  "12:00",
-  "13:00",
-  "13:30",
-  "14:00",
-  "14:30",
-  "15:00",
-  "15:30",
-  "16:00",
-  "16:30",
-  "17:00",
-  "17:30",
-  "18:00",
-];
 
 function compactDate(value: string | null, locale: string) {
   if (!value) return "-";
@@ -124,11 +101,6 @@ function saveDemoOrders(orders: ServiqWorkOrder[]) {
   localStorage.setItem(DEMO_ORDERS_KEY, JSON.stringify(orders));
 }
 
-function money(value: number | null, locale: string, currency = "TRY") {
-  if (value == null) return "-";
-  return `${value.toLocaleString(locale, { maximumFractionDigits: 2 })} ${currency}`;
-}
-
 function friendlyError(message: string, t: (key: MessageKey, vars?: Record<string, string | number>) => string) {
   if (message.includes("401")) return t("error.authFailed");
   if (message.includes("403")) return t("error.forbidden");
@@ -141,26 +113,16 @@ function friendlyError(message: string, t: (key: MessageKey, vars?: Record<strin
 
 function StatusPill({ status, t }: { status: string; t: (key: MessageKey) => string }) {
   const key = `status.${status}` as MessageKey;
-  return <Badge color={statusColor[status] ?? "#444"}>{t(key)}</Badge>;
+  return <Badge color={statusColor[status] ?? colors.muted}>{t(key)}</Badge>;
 }
 
-function LabelLine({ label, value }: { label: string; value: string | null | undefined }) {
-  if (!value) return null;
-  return (
-    <div style={{ display: "grid", gridTemplateColumns: "92px minmax(0, 1fr)", gap: 8, alignItems: "baseline" }}>
-      <span style={{ color: "#888", fontSize: 11, fontWeight: 800 }}>{label}</span>
-      <span style={{ color: "#222", fontSize: 12, fontWeight: 700, overflowWrap: "anywhere" }}>{value}</span>
-    </div>
-  );
-}
-
-const tabLabels: Record<Tab, MessageKey> = {
-  details: "serviq.details",
-  materials: "serviq.materials",
-  time: "serviq.time",
-  sign: "serviq.sign",
-  payment: "serviq.payment",
-  assistant: "serviq.assistant",
+const tabLabels: Record<Tab, { label: MessageKey; icon: React.ReactNode }> = {
+  details: { label: "serviq.details", icon: <Briefcase size={16} /> },
+  materials: { label: "serviq.materials", icon: <Package size={16} /> },
+  time: { label: "serviq.time", icon: <Clock size={16} /> },
+  sign: { label: "serviq.sign", icon: <PenTool size={16} /> },
+  payment: { label: "serviq.payment", icon: <CreditCard size={16} /> },
+  assistant: { label: "serviq.assistant", icon: <Sparkles size={16} /> },
 };
 
 export default function ServiqPage() {
@@ -179,25 +141,8 @@ export default function ServiqPage() {
   const [error, setError] = useState("");
 
   const [auth, setAuth] = useState({ orgId: DEFAULT_ORG_ID, apiKey: "" });
-  const [newOrder, setNewOrder] = useState<NewWorkOrderFormState>({
-    orderNo: "",
-    title: "",
-    priority: "NORMAL",
-    scheduledDate: "",
-    scheduledTime: "",
-    visitNotes: "",
-    customerName: "",
-    customerEmail: "",
-    customerPhone: "",
-    customerAddress: "",
-    billToAccount: true,
-    equipmentName: "",
-    equipmentModel: "",
-    serialNumber: "",
-    warrantyStatus: "",
-    technicianName: "",
-    technicianPhone: "",
-  });
+  
+  // Forms states
   const [material, setMaterial] = useState({
     material_code: "",
     material_name: "",
@@ -267,16 +212,7 @@ export default function ServiqPage() {
     localStorage.setItem("serviq_org_id", storedOrgId);
     setAuth({ orgId: storedOrgId, apiKey: storedApiKey });
     refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  function saveConnection() {
-    localStorage.setItem("serviq_org_id", auth.orgId || DEFAULT_ORG_ID);
-    if (auth.apiKey) localStorage.setItem("serviq_api_key", auth.apiKey);
-    else localStorage.removeItem("serviq_api_key");
-    setNotice(t("notice.connectionSaved"));
-    refresh(selected?.id);
-  }
 
   async function runAction(label: string, action: () => Promise<ServiqWorkOrder | void>, success: string) {
     setBusy(label);
@@ -296,107 +232,6 @@ export default function ServiqPage() {
     }
   }
 
-  async function submitNewOrder(e: FormEvent) {
-    e.preventDefault();
-    const body = {
-          order_no: newOrder.orderNo,
-          title: newOrder.title,
-          priority: newOrder.priority || null,
-          scheduled_for: scheduledInputToIso(newOrder.scheduledDate, newOrder.scheduledTime),
-          visit_notes: newOrder.visitNotes || null,
-          customer: {
-            name: newOrder.customerName,
-            email: newOrder.customerEmail || null,
-            phone: newOrder.customerPhone || null,
-            address: newOrder.customerAddress || null,
-            is_current_account: newOrder.billToAccount,
-          },
-          equipment: newOrder.equipmentName
-            ? {
-                name: newOrder.equipmentName,
-                model: newOrder.equipmentModel || null,
-                serial_number: newOrder.serialNumber || null,
-                warranty_status: newOrder.warrantyStatus || null,
-              }
-            : null,
-          technician: newOrder.technicianName
-            ? { name: newOrder.technicianName, phone: newOrder.technicianPhone || null }
-            : null,
-        };
-    if (!hasApiKey) {
-      const now = new Date().toISOString();
-      const created: ServiqWorkOrder = {
-        id: `demo-${Date.now()}`,
-        order_no: body.order_no,
-        title: body.title,
-        status: "OPEN",
-        priority: body.priority,
-        scheduled_for: body.scheduled_for,
-        visit_notes: body.visit_notes,
-        technician_comment: null,
-        external_erp_id: null,
-        erp_sync_status: "DEMO",
-        customer: {
-          id: `demo-customer-${Date.now()}`,
-          name: body.customer.name,
-          code: null,
-          email: body.customer.email,
-          phone: body.customer.phone,
-          address: body.customer.address,
-          is_current_account: body.customer.is_current_account ?? false,
-          external_erp_id: null,
-        },
-        equipment: body.equipment
-          ? {
-              id: `demo-equipment-${Date.now()}`,
-              name: body.equipment.name,
-              model: body.equipment.model,
-              serial_number: body.equipment.serial_number,
-              warranty_status: body.equipment.warranty_status,
-              external_erp_id: null,
-            }
-          : null,
-        technician: body.technician
-          ? {
-              id: `demo-technician-${body.technician.name}`,
-              name: body.technician.name,
-              email: null,
-              phone: body.technician.phone ?? null,
-              external_erp_id: null,
-            }
-          : null,
-        materials: [],
-        time_entries: [],
-        signatures: [],
-        payments: [],
-        created_at: now,
-        updated_at: now,
-      };
-      const nextOrders = [created, ...loadDemoOrders()];
-      saveDemoOrders(nextOrders);
-      setOrders((current) => [created, ...current]);
-      setSelectedId(created.id);
-      localStorage.setItem("serviq_selected_order", created.id);
-      setShowCreate(false);
-      setShowConnection(false);
-      setError("");
-      setNotice(t("serviq.demoSaved"));
-      return;
-    }
-    await runAction(
-      "create",
-      async () => {
-        const created = await createServiqWorkOrder(body);
-        setOrders((current) => [created, ...current]);
-        setSelectedId(created.id);
-        localStorage.setItem("serviq_selected_order", created.id);
-        setShowCreate(false);
-        return created;
-      },
-      t("notice.workOrderCreated"),
-    );
-  }
-
   async function beginVisit() {
     if (!selected) return;
     setTimeEntry((current) => ({ ...current, arrival_time: toDatetimeLocal(new Date()) }));
@@ -406,65 +241,6 @@ export default function ServiqPage() {
   function endVisit() {
     setTimeEntry((current) => ({ ...current, departure_time: toDatetimeLocal(new Date()) }));
     setActiveTab("time");
-  }
-
-  async function submitMaterial(e: FormEvent) {
-    e.preventDefault();
-    if (!selected) return;
-    await runAction(
-      "material",
-      () =>
-        addServiqMaterial(selected.id, {
-          ...material,
-          warehouse_location: material.warehouse_location || null,
-        }),
-      t("notice.materialSaved"),
-    );
-  }
-
-  async function submitTime(e: FormEvent) {
-    e.preventDefault();
-    if (!selected) return;
-    await runAction(
-      "time",
-      () =>
-        addServiqTimeEntry(selected.id, {
-          arrival_time: fromDatetimeLocal(timeEntry.arrival_time),
-          departure_time: fromDatetimeLocal(timeEntry.departure_time),
-          labor_hours: timeEntry.labor_hours,
-          travel_hours: timeEntry.travel_hours,
-          waiting_hours: timeEntry.waiting_hours,
-          technician_comment: timeEntry.technician_comment || null,
-        }),
-      t("notice.timeSaved"),
-    );
-  }
-
-  async function submitSignature(e: FormEvent) {
-    e.preventDefault();
-    if (!selected) return;
-    await runAction("signature", () => addServiqSignature(selected.id, signature), t("notice.signatureSaved"));
-  }
-
-  async function submitPayment(e: FormEvent) {
-    e.preventDefault();
-    if (!selected) return;
-    await runAction(
-      "payment",
-      async () => {
-        await recordServiqPayment({
-          work_order_id: selected.id,
-          method: payment.method,
-          status: payment.status,
-          amount: payment.amount,
-          currency: payment.currency,
-          provider: "manual",
-          transaction_id: payment.transaction_id || null,
-        });
-        await refresh(selected.id);
-      },
-      t("notice.paymentRecorded"),
-    );
   }
 
   async function completeSelected() {
@@ -479,32 +255,56 @@ export default function ServiqPage() {
     );
   }
 
+  async function submitMaterial(e: FormEvent) {
+    e.preventDefault();
+    if (!selected) return;
+    await runAction("material", () => addServiqMaterial(selected.id, { ...material, warehouse_location: material.warehouse_location || null }), t("notice.materialSaved"));
+  }
+
+  async function submitTime(e: FormEvent) {
+    e.preventDefault();
+    if (!selected) return;
+    await runAction("time", () => addServiqTimeEntry(selected.id, {
+      arrival_time: fromDatetimeLocal(timeEntry.arrival_time),
+      departure_time: fromDatetimeLocal(timeEntry.departure_time),
+      labor_hours: timeEntry.labor_hours,
+      travel_hours: timeEntry.travel_hours,
+      waiting_hours: timeEntry.waiting_hours,
+      technician_comment: timeEntry.technician_comment || null,
+    }), t("notice.timeSaved"));
+  }
+
+  async function submitSignature(e: FormEvent) {
+    e.preventDefault();
+    if (!selected) return;
+    await runAction("signature", () => addServiqSignature(selected.id, signature), t("notice.signatureSaved"));
+  }
+
+  async function submitPayment(e: FormEvent) {
+    e.preventDefault();
+    if (!selected) return;
+    await runAction("payment", async () => {
+      await recordServiqPayment({ work_order_id: selected.id, method: payment.method, status: payment.status, amount: payment.amount, currency: payment.currency, provider: "manual", transaction_id: payment.transaction_id || null });
+      await refresh(selected.id);
+    }, t("notice.paymentRecorded"));
+  }
+
   async function viewReport() {
     if (!selected) return;
-    await runAction(
-      "report",
-      async () => {
-        await getServiqReport(selected.id);
-      },
-      t("notice.reportAvailable"),
-    );
+    await runAction("report", async () => { await getServiqReport(selected.id); }, t("notice.reportAvailable"));
   }
 
   async function downloadPdf() {
     if (!selected) return;
-    await runAction(
-      "pdf",
-      async () => {
-        const blob = await downloadServiqReportPdf(selected.id);
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = `serviq-${selected.order_no}.pdf`;
-        link.click();
-        URL.revokeObjectURL(url);
-      },
-      t("notice.pdfDownloaded"),
-    );
+    await runAction("pdf", async () => {
+      const blob = await downloadServiqReportPdf(selected.id);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `serviq-${selected.order_no}.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
+    }, t("notice.pdfDownloaded"));
   }
 
   async function emailReport() {
@@ -512,13 +312,7 @@ export default function ServiqPage() {
       setError(t("error.customerEmailMissing"));
       return;
     }
-    await runAction(
-      "email",
-      async () => {
-        await sendServiqEmail(selected.id, selected.customer.email ?? "");
-      },
-      t("notice.emailQueued"),
-    );
+    await runAction("email", async () => { await sendServiqEmail(selected.id, selected.customer.email ?? ""); }, t("notice.emailQueued"));
   }
 
   async function loadAssistantSummary() {
@@ -536,862 +330,245 @@ export default function ServiqPage() {
   }
 
   return (
-    <main style={{ padding: 16, maxWidth: 1180, margin: "0 auto", background: "#fafafa", minHeight: "100vh" }}>
-      <Header
-        selected={selected}
-        loading={loading}
-        busy={Boolean(busy)}
-        onRefresh={() => refresh(selected?.id)}
-        onNew={() => setShowCreate((value) => !value)}
-        onConnection={() => setShowConnection((value) => !value)}
-        hasApiKey={hasApiKey}
-        t={t}
-      />
-
-      {showConnection && (
-        <Card style={{ marginTop: 14 }}>
-          <h2 style={{ fontSize: 16, margin: "0 0 6px" }}>{t("serviq.connectionTitle")}</h2>
-          <p style={{ margin: "0 0 12px", color: "#666", fontSize: 13 }}>{t("serviq.connectionHelp")}</p>
-          <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
-            <Field label={t("field.orgId")}>
-              <TextInput value={auth.orgId} onChange={(e) => setAuth((current) => ({ ...current, orgId: e.target.value }))} />
-            </Field>
-            <Field label={t("field.apiKey")}>
-              <TextInput
-                value={auth.apiKey}
-                onChange={(e) => setAuth((current) => ({ ...current, apiKey: e.target.value }))}
-                placeholder={t("field.apiKeyPlaceholder")}
-                type="password"
-              />
-            </Field>
-            <Button onClick={saveConnection} style={{ alignSelf: "end", background: "#2563eb" }}>
-              {t("field.saveConnection")}
-            </Button>
-          </div>
-        </Card>
-      )}
-
-      {!showConnection && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            marginTop: 14,
-            padding: "10px 12px",
-            border: "1px solid #e8e8e8",
-            borderRadius: 8,
-            background: hasApiKey ? "#f0fdf4" : "#fff7ed",
-            color: hasApiKey ? "#166534" : "#9a3412",
-            fontSize: 13,
-            fontWeight: 700,
-          }}
-        >
-          <span>{hasApiKey ? t("serviq.liveApi") : t("serviq.demoMode")}</span>
-          <span style={{ color: "#666", fontWeight: 500 }}>
-            {hasApiKey ? t("serviq.liveApiInfo") : t("serviq.demoModeInfo")}
-          </span>
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: colors.soft, overflow: "hidden" }}>
+      {/* Enterprise Top Navbar */}
+      <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 24px", background: "#0f172a", color: "#fff", zIndex: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <button className="mobile-only" onClick={() => setShowList(!showList)} style={{ background: "transparent", border: "none", color: "#fff", cursor: "pointer" }}>
+            <Menu size={24} />
+          </button>
+          <Briefcase size={24} color={colors.primary} />
+          <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, letterSpacing: "0.02em" }}>SERVIQ</h1>
+          <Badge variant="soft" color="#cbd5e1" style={{ marginLeft: 8 }}>ENTERPRISE</Badge>
         </div>
-      )}
+        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+          <LanguageToggle />
+          <Button variant="ghost" onClick={() => setShowConnection(!showConnection)} style={{ color: "#fff" }}>
+            <Settings size={18} />
+          </Button>
+        </div>
+      </header>
 
-      {showCreate && <CreateWorkOrderForm values={newOrder} setValues={setNewOrder} busy={Boolean(busy)} onSubmit={submitNewOrder} t={t} />}
-
-      {notice && <p style={{ color: "#166534", fontSize: 13, margin: "12px 0 0" }}>{notice}</p>}
-      {error && <p style={{ color: "#b91c1c", fontSize: 13, margin: "12px 0 0" }}>{error}</p>}
-
-      <div className="serviq-shell" style={{ display: "grid", gridTemplateColumns: "minmax(0, 340px) minmax(0, 1fr)", gap: 18, marginTop: 18 }}>
-        <section className={showList ? "work-list is-open" : "work-list"} style={{ display: "grid", gap: 10, alignContent: "start" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <h2 style={{ fontSize: 16, margin: 0 }}>{t("serviq.workOrders")}</h2>
-            <Button variant="secondary" onClick={() => setShowList(false)} style={{ display: "none" }} className="mobile-only">
-              {t("common.close")}
+      {/* Main Layout */}
+      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+        
+        {/* Sidebar: Work Orders List */}
+        <aside className={`work-list ${showList ? 'is-open' : ''}`} style={{ width: 320, background: "#fff", borderRight: `1px solid ${colors.border}`, display: "flex", flexDirection: "column", zIndex: 5 }}>
+          <div style={{ padding: "16px 20px", borderBottom: `1px solid ${colors.border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <h2 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: colors.text, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              {t("serviq.workOrders")}
+            </h2>
+            <Button variant="ghost" onClick={() => setShowCreate(true)} style={{ padding: 4 }}>
+              <Plus size={18} />
             </Button>
           </div>
-          {loading ? (
-            <EmptyState message={t("serviq.loadingWorkOrders")} />
-          ) : orders.length === 0 ? (
-            <EmptyState message={t("serviq.noWorkOrders")} action={<Button onClick={() => setShowCreate(true)}>{t("serviq.createWorkOrder")}</Button>} />
-          ) : (
-            orders.map((order) => (
-              <button
-                key={order.id}
-                onClick={() => {
-                  setSelectedId(order.id);
-                  setShowList(false);
-                }}
-                style={{
-                  textAlign: "left",
-                  border: `1px solid ${selected?.id === order.id ? "#111" : "#eee"}`,
-                  borderRadius: 8,
-                  padding: 12,
-                  background: "#fff",
-                  cursor: "pointer",
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
-                  <strong style={{ color: "#111", fontSize: 13 }}>{t("serviq.productLabel")}</strong>
-                  <StatusPill status={order.status} t={t} />
-                </div>
-                <div style={{ display: "grid", gap: 6, marginTop: 10 }}>
-                  <LabelLine label={t("serviq.orderNo")} value={order.order_no} />
-                  <LabelLine label={t("serviq.customer")} value={order.customer.name} />
-                  <LabelLine label={t("serviq.equipment")} value={order.equipment?.name} />
-                  <LabelLine label={t("serviq.serialNo")} value={order.equipment?.serial_number} />
-                  <LabelLine label={t("serviq.orderDateOpened")} value={compactDate(order.created_at, localeName)} />
-                  <LabelLine label={t("serviq.technician")} value={order.technician?.name} />
-                </div>
-              </button>
-            ))
-          )}
-        </section>
-
-        <section style={{ minWidth: 0 }}>
-          {!selected ? (
-            <EmptyState message={error ? t("serviq.connectionRequired") : t("serviq.selectOrCreate")} />
-          ) : (
-            <div style={{ display: "grid", gap: 14 }}>
-              <Card style={{ position: "sticky", top: 0, zIndex: 2 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
-                  <div>
-                    <StatusPill status={selected.status} t={t} />
-                    <h2 style={{ margin: "10px 0 4px", fontSize: 22 }}>{selected.title}</h2>
-                    <p style={{ margin: 0, color: "#777", fontSize: 13 }}>
-                      {selected.order_no} · {selected.customer.name}
-                    </p>
+          
+          <div style={{ flex: 1, overflowY: "auto", padding: 12, display: "grid", alignContent: "start", gap: 8 }}>
+            {loading ? (
+              <p style={{ textAlign: "center", color: colors.muted, fontSize: 13, padding: 20 }}>{t("serviq.loadingWorkOrders")}</p>
+            ) : orders.length === 0 ? (
+              <div style={{ textAlign: "center", padding: 20 }}>
+                <p style={{ color: colors.muted, fontSize: 13, marginBottom: 12 }}>{t("serviq.noWorkOrders")}</p>
+                <Button onClick={() => setShowCreate(true)} variant="primary" style={{ width: "100%" }}>{t("serviq.createWorkOrder")}</Button>
+              </div>
+            ) : (
+              orders.map((order) => (
+                <button
+                  key={order.id}
+                  onClick={() => { setSelectedId(order.id); setShowList(false); }}
+                  style={{
+                    textAlign: "left",
+                    padding: "14px 16px",
+                    background: selected?.id === order.id ? "#f0f6ff" : "transparent",
+                    border: `1px solid ${selected?.id === order.id ? colors.primary : "transparent"}`,
+                    borderRadius: 6,
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: colors.text }}>{order.order_no}</span>
+                    <StatusPill status={order.status} t={t} />
                   </div>
-                  <Button variant="secondary" onClick={() => setShowList(true)} style={{ display: "none" }} className="mobile-only">
-                    {t("common.list")}
-                  </Button>
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8, marginTop: 14 }}>
-                  <Button disabled={!canMutate || Boolean(busy)} onClick={beginVisit}>
-                    {t("serviq.startVisit")}
-                  </Button>
-                  <Button disabled={!canMutate || Boolean(busy)} variant="secondary" onClick={endVisit}>
-                    {t("serviq.endVisit")}
-                  </Button>
-                  <Button disabled={!canMutate || Boolean(busy)} variant="success" onClick={completeSelected}>
-                    {t("serviq.complete")}
-                  </Button>
-                </div>
-              </Card>
+                  <div style={{ fontSize: 13, color: colors.text, fontWeight: 500, marginBottom: 4 }}>{order.customer.name}</div>
+                  <div style={{ fontSize: 12, color: colors.muted }}>{order.equipment?.name}</div>
+                  <div style={{ fontSize: 11, color: colors.muted, marginTop: 8 }}>{compactDate(order.created_at, localeName)}</div>
+                </button>
+              ))
+            )}
+          </div>
+        </aside>
 
-              <nav style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(0, 1fr))", gap: 6 }}>
+        {/* Main Content Area */}
+        <main style={{ flex: 1, overflowY: "auto", padding: "24px 32px", display: "flex", flexDirection: "column" }} className="main-content">
+          {notice && (
+            <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#166534", padding: "12px 16px", borderRadius: 6, marginBottom: 20, display: "flex", alignItems: "center", gap: 8, fontSize: 14 }}>
+              <CheckCircle size={18} /> {notice}
+            </div>
+          )}
+          {error && (
+            <div style={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#b91c1c", padding: "12px 16px", borderRadius: 6, marginBottom: 20, display: "flex", alignItems: "center", gap: 8, fontSize: 14 }}>
+              <AlertCircle size={18} /> {error}
+            </div>
+          )}
+
+          {!selected ? (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flex: 1, color: colors.muted }}>
+              <Briefcase size={48} color="#cbd5e1" style={{ marginBottom: 16 }} />
+              <p style={{ fontSize: 16, fontWeight: 500 }}>{t("serviq.selectOrCreate")}</p>
+            </div>
+          ) : (
+            <div style={{ display: "grid", gap: 24, maxWidth: 1200, margin: "0 auto", width: "100%" }}>
+              {/* Header Card */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", borderBottom: `1px solid ${colors.border}`, paddingBottom: 20 }}>
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+                    <StatusPill status={selected.status} t={t} />
+                    <span style={{ fontSize: 14, color: colors.muted, fontWeight: 600 }}>{selected.order_no}</span>
+                  </div>
+                  <h2 style={{ margin: 0, fontSize: 28, fontWeight: 700, color: colors.text }}>{selected.title}</h2>
+                </div>
+                
+                {/* Desktop Sticky Actions */}
+                <div className="desktop-actions" style={{ display: "flex", gap: 12 }}>
+                  {selected.status === "OPEN" && (
+                    <Button onClick={beginVisit} disabled={Boolean(busy)} variant="primary">
+                      <Play size={16} /> {t("serviq.startVisit")}
+                    </Button>
+                  )}
+                  {selected.status === "IN_PROGRESS" && (
+                    <>
+                      <Button onClick={endVisit} disabled={Boolean(busy)} variant="outline">
+                        <Clock size={16} /> {t("serviq.endVisit")}
+                      </Button>
+                      <Button onClick={completeSelected} disabled={Boolean(busy)} variant="success">
+                        <CheckCircle size={16} /> {t("serviq.complete")}
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Enterprise Tabs */}
+              <nav className="enterprise-tabs" style={{ display: "flex", gap: 32, borderBottom: `1px solid ${colors.border}`, paddingBottom: 0 }}>
                 {(["details", "materials", "time", "sign", "payment", "assistant"] as const).map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
                     style={{
-                      border: "1px solid #e5e5e5",
-                      borderRadius: 8,
-                      padding: "10px 6px",
-                      background: activeTab === tab ? "#111" : "#fff",
-                      color: activeTab === tab ? "#fff" : "#333",
-                      fontSize: 12,
-                      fontWeight: 800,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "0 0 16px 0",
+                      background: "transparent",
+                      border: "none",
+                      borderBottom: `2px solid ${activeTab === tab ? colors.primary : "transparent"}`,
+                      color: activeTab === tab ? colors.primary : colors.muted,
+                      fontSize: 14,
+                      fontWeight: 600,
                       cursor: "pointer",
+                      transition: "all 0.2s",
                     }}
                   >
-                    {t(tabLabels[tab])}
+                    {tabLabels[tab].icon}
+                    {t(tabLabels[tab].label)}
                   </button>
                 ))}
               </nav>
 
-              {activeTab === "details" && (
-                <DetailsTab selected={selected} onViewReport={viewReport} onDownloadPdf={downloadPdf} onEmailReport={emailReport} busy={Boolean(busy)} t={t} localeName={localeName} />
-              )}
-              {activeTab === "materials" && (
-                <MaterialsTab selected={selected} material={material} setMaterial={setMaterial} canMutate={Boolean(canMutate)} busy={Boolean(busy)} onSubmit={submitMaterial} t={t} />
-              )}
-              {activeTab === "time" && (
-                <TimeTab selected={selected} timeEntry={timeEntry} setTimeEntry={setTimeEntry} canMutate={Boolean(canMutate)} busy={Boolean(busy)} onSubmit={submitTime} t={t} localeName={localeName} />
-              )}
-              {activeTab === "sign" && (
-                <SignatureTab selected={selected} signature={signature} setSignature={setSignature} canMutate={Boolean(canMutate)} busy={Boolean(busy)} onSubmit={submitSignature} t={t} />
-              )}
-              {activeTab === "payment" && (
-                <PaymentTab selected={selected} payment={payment} setPayment={setPayment} canMutate={Boolean(canMutate)} busy={Boolean(busy)} onSubmit={submitPayment} t={t} localeName={localeName} />
-              )}
-              {activeTab === "assistant" && (
-                <AssistantTab summary={assistantSummary} busy={Boolean(busy)} onRefresh={loadAssistantSummary} t={t} />
-              )}
+              {/* Tab Content */}
+              <div style={{ paddingTop: 8 }}>
+                {activeTab === "details" && <WorkOrderDetail selected={selected} onViewReport={viewReport} onDownloadPdf={downloadPdf} onEmailReport={emailReport} busy={Boolean(busy)} t={t} localeName={localeName} />}
+                {activeTab === "materials" && <MaterialUsageTable materials={selected.materials} material={material} setMaterial={setMaterial} canMutate={Boolean(canMutate)} busy={Boolean(busy)} onSubmit={submitMaterial} t={t} />}
+                {activeTab === "time" && <TimeTrackingForm timeEntries={selected.time_entries} timeEntry={timeEntry} setTimeEntry={setTimeEntry} canMutate={Boolean(canMutate)} busy={Boolean(busy)} onSubmit={submitTime} t={t} localeName={localeName} />}
+                {activeTab === "sign" && (
+                  <Card>
+                    <form onSubmit={submitSignature}>
+                      <h3 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 700 }}>{t("serviq.signature")}</h3>
+                      <div style={{ display: "grid", gap: 16 }}>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                          <Field label={t("serviq.signerName")}>
+                            <TextInput required value={signature.signer_name} onChange={(e) => setSignature(v => ({...v, signer_name: e.target.value}))} />
+                          </Field>
+                          <Field label="Signer Type">
+                            <SelectInput value={signature.signer_type} onChange={(e) => setSignature(v => ({...v, signer_type: e.target.value as any}))}>
+                              <option value="CUSTOMER">{t("serviq.customer")}</option>
+                              <option value="TECHNICIAN">{t("serviq.technician")}</option>
+                            </SelectInput>
+                          </Field>
+                        </div>
+                        <SignatureCanvas value={signature.image_data_url} onChange={(v) => setSignature(s => ({...s, image_data_url: v}))} clearLabel={t("serviq.clearSignature")} />
+                      </div>
+                      <div style={{ marginTop: 20, display: "flex", justifyContent: "flex-end" }}>
+                        <Button disabled={!canMutate || Boolean(busy)} variant="primary">{t("serviq.saveSignature")}</Button>
+                      </div>
+                    </form>
+                  </Card>
+                )}
+                {activeTab === "payment" && <PaymentModal payment={payment} setPayment={setPayment} canMutate={Boolean(canMutate)} busy={Boolean(busy)} onSubmit={submitPayment} t={t} />}
+                {activeTab === "assistant" && <AssistantTab summary={assistantSummary} busy={Boolean(busy)} onRefresh={loadAssistantSummary} t={t} />}
+              </div>
             </div>
           )}
-        </section>
+        </main>
       </div>
+
+      {/* Mobile Sticky Actions (Bottom) */}
+      {selected && canMutate && (
+        <div className="mobile-only mobile-actions" style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#fff", padding: "16px", borderTop: `1px solid ${colors.border}`, display: "flex", gap: 12, zIndex: 20 }}>
+          {selected.status === "OPEN" && (
+            <Button onClick={beginVisit} disabled={Boolean(busy)} variant="primary" style={{ width: "100%" }}>
+              <Play size={18} /> {t("serviq.startVisit")}
+            </Button>
+          )}
+          {selected.status === "IN_PROGRESS" && (
+            <>
+              <Button onClick={endVisit} disabled={Boolean(busy)} variant="outline" style={{ flex: 1 }}>
+                <Clock size={18} />
+              </Button>
+              <Button onClick={completeSelected} disabled={Boolean(busy)} variant="success" style={{ flex: 2 }}>
+                <CheckCircle size={18} /> {t("serviq.complete")}
+              </Button>
+            </>
+          )}
+        </div>
+      )}
 
       <style jsx>{`
         .mobile-only {
           display: none !important;
         }
         @media (max-width: 820px) {
-          .serviq-shell {
-            grid-template-columns: 1fr !important;
-          }
           .work-list {
-            display: none !important;
+            position: absolute;
+            left: -100%;
+            top: 60px;
+            bottom: 0;
+            transition: left 0.3s;
           }
           .work-list.is-open {
-            display: grid !important;
+            left: 0;
+            box-shadow: 4px 0 12px rgba(0,0,0,0.1);
           }
           .mobile-only {
             display: inline-flex !important;
           }
-        }
-        @media (max-width: 620px) {
-          nav {
-            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+          .mobile-actions {
+            display: flex !important;
           }
-          main :global(button) {
-            min-height: 42px;
+          .desktop-actions {
+            display: none !important;
+          }
+          .main-content {
+            padding: 16px 16px 80px 16px !important; /* padding bottom for sticky actions */
+          }
+          .enterprise-tabs {
+            gap: 16px !important;
+            overflow-x: auto;
+            white-space: nowrap;
           }
         }
       `}</style>
-    </main>
-  );
-}
-
-function Header({
-  selected,
-  loading,
-  busy,
-  onRefresh,
-  onNew,
-  onConnection,
-  hasApiKey,
-  t,
-}: {
-  selected: ServiqWorkOrder | null;
-  loading: boolean;
-  busy: boolean;
-  onRefresh: () => void;
-  onNew: () => void;
-  onConnection: () => void;
-  hasApiKey: boolean;
-  t: (key: MessageKey, vars?: Record<string, string | number>) => string;
-}) {
-  return (
-    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
-      <div>
-        <a href="/" style={{ color: "#666", fontSize: 14 }}>{t("nav.back")}</a>
-        <h1 style={{ margin: "8px 0 4px", fontSize: 28, color: "#111" }}>{t("serviq.title")}</h1>
-        <p style={{ margin: 0, color: "#666", fontSize: 14 }}>
-          {selected ? t("serviq.selected", { orderNo: selected.order_no }) : t("serviq.subtitle")}
-        </p>
-      </div>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-        <LanguageToggle />
-        <a
-          href="/serviq/dashboard"
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "10px 14px",
-            borderRadius: 8,
-            border: "1px solid #ddd",
-            background: "#fff",
-            color: "#111",
-            fontSize: 13,
-            fontWeight: 700,
-            textDecoration: "none",
-          }}
-        >
-          {t("nav.dashboard")}
-        </a>
-        <Button variant="secondary" onClick={onConnection}>{hasApiKey ? t("serviq.liveApi") : t("serviq.demoMode")}</Button>
-        <Button variant="secondary" onClick={onRefresh} disabled={loading || busy}>{t("common.refresh")}</Button>
-        <Button onClick={onNew}>{t("common.new")}</Button>
-      </div>
-    </div>
-  );
-}
-
-function CreateWorkOrderForm({
-  values,
-  setValues,
-  busy,
-  onSubmit,
-  t,
-}: {
-  values: NewWorkOrderFormState;
-  setValues: React.Dispatch<React.SetStateAction<NewWorkOrderFormState>>;
-  busy: boolean;
-  onSubmit: (e: FormEvent) => void;
-  t: (key: MessageKey) => string;
-}) {
-  return (
-    <Card style={{ marginTop: 14 }}>
-      <form onSubmit={onSubmit}>
-        <h2 style={{ fontSize: 16, margin: "0 0 12px" }}>{t("serviq.newWorkOrder")}</h2>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
-          <Field label={t("serviq.orderNo")}>
-            <TextInput required value={values.orderNo} onChange={(e) => setValues((v) => ({ ...v, orderNo: e.target.value }))} />
-          </Field>
-          <Field label={t("serviq.titleField")}>
-            <TextInput required value={values.title} onChange={(e) => setValues((v) => ({ ...v, title: e.target.value }))} />
-          </Field>
-          <Field label={t("serviq.priority")}>
-            <SelectInput value={values.priority} onChange={(e) => setValues((v) => ({ ...v, priority: e.target.value }))}>
-              <option value="LOW">{t("priority.LOW")}</option>
-              <option value="NORMAL">{t("priority.NORMAL")}</option>
-              <option value="HIGH">{t("priority.HIGH")}</option>
-              <option value="URGENT">{t("priority.URGENT")}</option>
-            </SelectInput>
-          </Field>
-          <Field label={t("serviq.scheduledFor")}>
-            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 112px", gap: 8 }}>
-              <TextInput
-                type="date"
-                aria-label={t("serviq.scheduledDate")}
-                value={values.scheduledDate}
-                onChange={(e) =>
-                  setValues((v) => ({
-                    ...v,
-                    scheduledDate: e.target.value,
-                  }))
-                }
-              />
-              <SelectInput
-                aria-label={t("serviq.scheduledTime")}
-                value={values.scheduledTime}
-                onChange={(e) =>
-                  setValues((v) => ({
-                    ...v,
-                    scheduledTime: e.target.value,
-                  }))
-                }
-              >
-                <option value="">{t("serviq.scheduledTime")}</option>
-                {scheduleTimes.map((time) => (
-                  <option key={time} value={time}>
-                    {time}
-                  </option>
-                ))}
-              </SelectInput>
-            </div>
-          </Field>
-          <Field label={t("serviq.customer")}>
-            <TextInput required value={values.customerName} onChange={(e) => setValues((v) => ({ ...v, customerName: e.target.value }))} />
-          </Field>
-          <Field label={t("serviq.customerPhone")}>
-            <TextInput value={values.customerPhone} onChange={(e) => setValues((v) => ({ ...v, customerPhone: e.target.value }))} />
-          </Field>
-          <Field label={t("serviq.customerEmail")}>
-            <TextInput value={values.customerEmail} onChange={(e) => setValues((v) => ({ ...v, customerEmail: e.target.value }))} />
-          </Field>
-          <Field label={t("serviq.equipment")}>
-            <TextInput value={values.equipmentName} onChange={(e) => setValues((v) => ({ ...v, equipmentName: e.target.value }))} />
-          </Field>
-          <Field label={t("serviq.model")}>
-            <TextInput value={values.equipmentModel} onChange={(e) => setValues((v) => ({ ...v, equipmentModel: e.target.value }))} />
-          </Field>
-          <Field label={t("serviq.serialNo")}>
-            <TextInput value={values.serialNumber} onChange={(e) => setValues((v) => ({ ...v, serialNumber: e.target.value }))} />
-          </Field>
-          <Field label={t("serviq.testTechnician")}>
-            <SelectInput
-              value={values.technicianName}
-              onChange={(e) => {
-                const selected = testTechnicians.find((tech) => tech.name === e.target.value);
-                setValues((v) => ({
-                  ...v,
-                  technicianName: selected?.name ?? e.target.value,
-                  technicianPhone: selected?.phone ?? "",
-                }));
-              }}
-            >
-              <option value="">{t("serviq.customTechnician")}</option>
-              {testTechnicians.map((tech) => (
-                <option key={tech.name} value={tech.name}>
-                  {tech.name}
-                </option>
-              ))}
-            </SelectInput>
-          </Field>
-          <Field label={t("serviq.technician")}>
-            <TextInput value={values.technicianName} onChange={(e) => setValues((v) => ({ ...v, technicianName: e.target.value }))} />
-          </Field>
-          <Field label={t("serviq.phone")}>
-            <TextInput value={values.technicianPhone} onChange={(e) => setValues((v) => ({ ...v, technicianPhone: e.target.value }))} />
-          </Field>
-          <Field label={t("serviq.visitNotes")}>
-            <TextArea value={values.visitNotes} onChange={(e) => setValues((v) => ({ ...v, visitNotes: e.target.value }))} />
-          </Field>
-          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#333", alignSelf: "end" }}>
-            <input
-              type="checkbox"
-              checked={values.billToAccount}
-              onChange={(e) => setValues((v) => ({ ...v, billToAccount: e.target.checked }))}
-            />
-            {t("serviq.billToAccount")}
-          </label>
-        </div>
-        <Button disabled={busy} style={{ marginTop: 12 }}>{t("serviq.createWorkOrder")}</Button>
-      </form>
-    </Card>
-  );
-}
-
-function DetailsTab({
-  selected,
-  onViewReport,
-  onDownloadPdf,
-  onEmailReport,
-  busy,
-  t,
-  localeName,
-}: {
-  selected: ServiqWorkOrder;
-  onViewReport: () => void;
-  onDownloadPdf: () => void;
-  onEmailReport: () => void;
-  busy: boolean;
-  t: (key: MessageKey) => string;
-  localeName: string;
-}) {
-  return (
-    <Card>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
-                <Info label={t("serviq.customer")} value={selected.customer.name} />
-                <Info label={t("serviq.phone")} value={selected.customer.phone ?? "-"} />
-                <Info label={t("serviq.equipment")} value={selected.equipment?.name ?? "-"} />
-                <Info label={t("serviq.serial")} value={selected.equipment?.serial_number ?? "-"} />
-                <Info label={t("serviq.technician")} value={selected.technician?.name ?? "-"} />
-                <Info label={t("serviq.scheduledFor")} value={compactDate(selected.scheduled_for, localeName)} />
-                <Info label={t("serviq.created")} value={compactDate(selected.created_at, localeName)} />
-              </div>
-      {selected.visit_notes && <p style={{ margin: "14px 0 0", color: "#444", fontSize: 14 }}>{selected.visit_notes}</p>}
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 14 }}>
-        <Button variant="secondary" disabled={busy} onClick={onViewReport}>{t("serviq.viewReport")}</Button>
-        <Button variant="secondary" disabled={busy} onClick={onDownloadPdf}>{t("serviq.downloadPdf")}</Button>
-        <Button variant="secondary" disabled={busy || !selected.customer.email} onClick={onEmailReport}>{t("serviq.sendEmail")}</Button>
-      </div>
-    </Card>
-  );
-}
-
-function MaterialsTab({
-  selected,
-  material,
-  setMaterial,
-  canMutate,
-  busy,
-  onSubmit,
-  t,
-}: {
-  selected: ServiqWorkOrder;
-  material: {
-    material_code: string;
-    material_name: string;
-    quantity: number;
-    unit: string;
-    status: ServiqMaterialStatus;
-    warehouse_location: string;
-  };
-  setMaterial: React.Dispatch<React.SetStateAction<typeof material>>;
-  canMutate: boolean;
-  busy: boolean;
-  onSubmit: (e: FormEvent) => void;
-  t: (key: MessageKey) => string;
-}) {
-  return (
-    <ActionWithList
-      title={t("serviq.materialUsage")}
-      onSubmit={onSubmit}
-      submitLabel={t("serviq.addMaterial")}
-      disabled={!canMutate || busy}
-      records={selected.materials.map((item) => (
-        <Row key={item.id} left={item.material_name} right={`${item.quantity} ${item.unit}`} meta={`${item.material_code} · ${materialStatusLabel(item.status, t)}`} />
-      ))}
-      empty={t("serviq.noMaterials")}
-      t={t}
-    >
-      <TextInput required placeholder={t("serviq.materialCode")} value={material.material_code} onChange={(e) => setMaterial((v) => ({ ...v, material_code: e.target.value }))} />
-      <TextInput required placeholder={t("serviq.materialName")} value={material.material_name} onChange={(e) => setMaterial((v) => ({ ...v, material_name: e.target.value }))} />
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <TextInput required type="number" min="0.001" step="0.001" value={material.quantity} onChange={(e) => setMaterial((v) => ({ ...v, quantity: Number(e.target.value) }))} />
-        <TextInput required value={material.unit} onChange={(e) => setMaterial((v) => ({ ...v, unit: e.target.value }))} />
-      </div>
-      <SelectInput value={material.status} onChange={(e) => setMaterial((v) => ({ ...v, status: e.target.value as ServiqMaterialStatus }))}>
-        <option value="USED">{t("serviq.used")}</option>
-        <option value="RETURNED">{t("serviq.returned")}</option>
-      </SelectInput>
-      <TextInput placeholder={t("serviq.warehouseLocation")} value={material.warehouse_location} onChange={(e) => setMaterial((v) => ({ ...v, warehouse_location: e.target.value }))} />
-    </ActionWithList>
-  );
-}
-
-function materialStatusLabel(status: ServiqMaterialStatus, t: (key: MessageKey) => string) {
-  const labels: Record<ServiqMaterialStatus, MessageKey> = {
-    USED: "serviq.used",
-    RETURNED: "serviq.returned",
-  };
-  return t(labels[status]);
-}
-
-function TimeTab({
-  selected,
-  timeEntry,
-  setTimeEntry,
-  canMutate,
-  busy,
-  onSubmit,
-  t,
-  localeName,
-}: {
-  selected: ServiqWorkOrder;
-  timeEntry: {
-    arrival_time: string;
-    departure_time: string;
-    labor_hours: number;
-    travel_hours: number;
-    waiting_hours: number;
-    technician_comment: string;
-  };
-  setTimeEntry: React.Dispatch<React.SetStateAction<typeof timeEntry>>;
-  canMutate: boolean;
-  busy: boolean;
-  onSubmit: (e: FormEvent) => void;
-  t: (key: MessageKey, vars?: Record<string, string | number>) => string;
-  localeName: string;
-}) {
-  return (
-    <ActionWithList
-      title={t("serviq.timeTracking")}
-      onSubmit={onSubmit}
-      submitLabel={t("serviq.saveTime")}
-      disabled={!canMutate || busy}
-      records={selected.time_entries.map((item) => (
-        <Row key={item.id} left={t("serviq.laborHours", { hours: item.labor_hours ?? 0 })} right={compactDate(item.arrival_time, localeName)} meta={item.technician_comment ?? ""} />
-      ))}
-      empty={t("serviq.noTimeEntries")}
-      t={t}
-    >
-      <Field label={t("serviq.arrival")}>
-        <TextInput type="datetime-local" value={timeEntry.arrival_time} onChange={(e) => setTimeEntry((v) => ({ ...v, arrival_time: e.target.value }))} />
-      </Field>
-      <Field label={t("serviq.departure")}>
-        <TextInput type="datetime-local" value={timeEntry.departure_time} onChange={(e) => setTimeEntry((v) => ({ ...v, departure_time: e.target.value }))} />
-      </Field>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
-        <TextInput type="number" min="0" step="0.25" value={timeEntry.labor_hours} onChange={(e) => setTimeEntry((v) => ({ ...v, labor_hours: Number(e.target.value) }))} />
-        <TextInput type="number" min="0" step="0.25" value={timeEntry.travel_hours} onChange={(e) => setTimeEntry((v) => ({ ...v, travel_hours: Number(e.target.value) }))} />
-        <TextInput type="number" min="0" step="0.25" value={timeEntry.waiting_hours} onChange={(e) => setTimeEntry((v) => ({ ...v, waiting_hours: Number(e.target.value) }))} />
-      </div>
-      <TextArea placeholder={t("serviq.technicianComment")} value={timeEntry.technician_comment} onChange={(e) => setTimeEntry((v) => ({ ...v, technician_comment: e.target.value }))} />
-    </ActionWithList>
-  );
-}
-
-function SignatureTab({
-  selected,
-  signature,
-  setSignature,
-  canMutate,
-  busy,
-  onSubmit,
-  t,
-}: {
-  selected: ServiqWorkOrder;
-  signature: { signer_type: "CUSTOMER" | "TECHNICIAN"; signer_name: string; image_data_url: string };
-  setSignature: React.Dispatch<React.SetStateAction<typeof signature>>;
-  canMutate: boolean;
-  busy: boolean;
-  onSubmit: (e: FormEvent) => void;
-  t: (key: MessageKey) => string;
-}) {
-  return (
-    <ActionWithList
-      title={t("serviq.signature")}
-      onSubmit={onSubmit}
-      submitLabel={t("serviq.saveSignature")}
-      disabled={!canMutate || busy}
-      records={selected.signatures.map((item) => (
-        <Row key={item.id} left={item.signer_name} right={item.signer_type} meta={item.image_data_url ? t("serviq.capturedSignature") : t("serviq.signatureWithoutImage")} />
-      ))}
-      empty={t("serviq.noSignatures")}
-      t={t}
-    >
-      <SelectInput value={signature.signer_type} onChange={(e) => setSignature((v) => ({ ...v, signer_type: e.target.value as "CUSTOMER" | "TECHNICIAN" }))}>
-        <option value="CUSTOMER">{t("serviq.customer")}</option>
-        <option value="TECHNICIAN">{t("serviq.technician")}</option>
-      </SelectInput>
-      <TextInput required placeholder={t("serviq.signerName")} value={signature.signer_name} onChange={(e) => setSignature((v) => ({ ...v, signer_name: e.target.value }))} />
-      <SignatureCanvas
-        value={signature.image_data_url}
-        onChange={(value) => setSignature((v) => ({ ...v, image_data_url: value }))}
-        clearLabel={t("serviq.clearSignature")}
-      />
-    </ActionWithList>
-  );
-}
-
-function SignatureCanvas({
-  value,
-  onChange,
-  clearLabel,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  clearLabel: string;
-}) {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const drawingRef = useRef(false);
-
-  function point(event: ReactPointerEvent<HTMLCanvasElement>) {
-    const canvas = canvasRef.current;
-    if (!canvas) return null;
-    const rect = canvas.getBoundingClientRect();
-    return {
-      x: ((event.clientX - rect.left) / rect.width) * canvas.width,
-      y: ((event.clientY - rect.top) / rect.height) * canvas.height,
-    };
-  }
-
-  function start(event: ReactPointerEvent<HTMLCanvasElement>) {
-    const canvas = canvasRef.current;
-    const p = point(event);
-    if (!canvas || !p) return;
-    drawingRef.current = true;
-    canvas.setPointerCapture(event.pointerId);
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.strokeStyle = "#111";
-    ctx.lineWidth = 3;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.moveTo(p.x, p.y);
-  }
-
-  function move(event: ReactPointerEvent<HTMLCanvasElement>) {
-    if (!drawingRef.current) return;
-    const canvas = canvasRef.current;
-    const p = point(event);
-    if (!canvas || !p) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.lineTo(p.x, p.y);
-    ctx.stroke();
-    onChange(canvas.toDataURL("image/png"));
-  }
-
-  function stop() {
-    drawingRef.current = false;
-  }
-
-  function clear() {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    canvas.getContext("2d")?.clearRect(0, 0, canvas.width, canvas.height);
-    onChange("");
-  }
-
-  return (
-    <div style={{ display: "grid", gap: 8 }}>
-      <canvas
-        ref={canvasRef}
-        width={640}
-        height={220}
-        onPointerDown={start}
-        onPointerMove={move}
-        onPointerUp={stop}
-        onPointerLeave={stop}
-        style={{
-          width: "100%",
-          aspectRatio: "16 / 5.5",
-          border: "1px solid #ddd",
-          borderRadius: 8,
-          background: "#fff",
-          touchAction: "none",
-        }}
-      />
-      <Button type="button" variant="secondary" onClick={clear} disabled={!value}>
-        {clearLabel}
-      </Button>
-    </div>
-  );
-}
-
-function PaymentTab({
-  selected,
-  payment,
-  setPayment,
-  canMutate,
-  busy,
-  onSubmit,
-  t,
-  localeName,
-}: {
-  selected: ServiqWorkOrder;
-  payment: {
-    method: ServiqPaymentMethod;
-    status: ServiqPaymentStatus;
-    amount: number;
-    currency: string;
-    transaction_id: string;
-  };
-  setPayment: React.Dispatch<React.SetStateAction<typeof payment>>;
-  canMutate: boolean;
-  busy: boolean;
-  onSubmit: (e: FormEvent) => void;
-  t: (key: MessageKey) => string;
-  localeName: string;
-}) {
-  return (
-    <ActionWithList
-      title={t("serviq.payment")}
-      onSubmit={onSubmit}
-      submitLabel={t("serviq.recordPayment")}
-      disabled={!canMutate || busy}
-      records={selected.payments.map((item) => (
-        <Row key={item.id} left={paymentMethodLabel(item.method, t)} right={money(item.amount, localeName, item.currency)} meta={paymentStatusLabel(item.status, t)} />
-      ))}
-      empty={t("serviq.noPayments")}
-      t={t}
-    >
-      <SelectInput value={payment.method} onChange={(e) => setPayment((v) => ({ ...v, method: e.target.value as ServiqPaymentMethod }))}>
-        <option value="CURRENT_ACCOUNT">{t("serviq.billToAccount")}</option>
-        <option value="CASH">{t("serviq.cash")}</option>
-        <option value="CREDIT_CARD">{t("serviq.creditCard")}</option>
-        <option value="VIRTUAL_POS">{t("serviq.virtualPos")}</option>
-      </SelectInput>
-      <SelectInput value={payment.status} onChange={(e) => setPayment((v) => ({ ...v, status: e.target.value as ServiqPaymentStatus }))}>
-        <option value="CURRENT_ACCOUNT">{t("serviq.billToAccount")}</option>
-        <option value="PAYMENT_PENDING">{t("serviq.paymentPending")}</option>
-        <option value="PAID">{t("serviq.paid")}</option>
-        <option value="UNPAID">{t("serviq.unpaid")}</option>
-      </SelectInput>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 90px", gap: 8 }}>
-        <TextInput type="number" min="0" step="0.01" value={payment.amount} onChange={(e) => setPayment((v) => ({ ...v, amount: Number(e.target.value) }))} />
-        <TextInput value={payment.currency} onChange={(e) => setPayment((v) => ({ ...v, currency: e.target.value }))} />
-      </div>
-      <TextInput placeholder={t("serviq.transactionRef")} value={payment.transaction_id} onChange={(e) => setPayment((v) => ({ ...v, transaction_id: e.target.value }))} />
-    </ActionWithList>
-  );
-}
-
-function paymentMethodLabel(method: ServiqPaymentMethod, t: (key: MessageKey) => string) {
-  const labels: Record<ServiqPaymentMethod, MessageKey> = {
-    CURRENT_ACCOUNT: "serviq.billToAccount",
-    CASH: "serviq.cash",
-    CREDIT_CARD: "serviq.creditCard",
-    VIRTUAL_POS: "serviq.virtualPos",
-  };
-  return t(labels[method]);
-}
-
-function paymentStatusLabel(status: ServiqPaymentStatus, t: (key: MessageKey) => string) {
-  const labels: Record<ServiqPaymentStatus, MessageKey> = {
-    CURRENT_ACCOUNT: "serviq.billToAccount",
-    PAYMENT_PENDING: "serviq.paymentPending",
-    PAID: "serviq.paid",
-    UNPAID: "serviq.unpaid",
-    FAILED: "serviq.failed",
-  };
-  return t(labels[status]);
-}
-
-function AssistantTab({
-  summary,
-  busy,
-  onRefresh,
-  t,
-}: {
-  summary: ServiqAssistantSummary | null;
-  busy: boolean;
-  onRefresh: () => void;
-  t: (key: MessageKey) => string;
-}) {
-  return (
-    <Card>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
-        <h3 style={{ margin: 0, fontSize: 15 }}>{t("serviq.technicianAssistant")}</h3>
-        <Button disabled={busy} onClick={onRefresh}>{t("serviq.generateSummary")}</Button>
-      </div>
-      {!summary ? (
-        <p style={{ color: "#777", fontSize: 14, margin: "12px 0 0" }}>
-          {t("serviq.assistantIntro")}
-        </p>
-      ) : (
-        <div style={{ display: "grid", gap: 14, marginTop: 14 }}>
-          <p style={{ margin: 0, color: "#222", fontSize: 14, lineHeight: 1.6 }}>{summary.summary}</p>
-          <div>
-            <h4 style={{ margin: "0 0 8px", fontSize: 13 }}>{t("serviq.nextActions")}</h4>
-            <ul style={{ margin: 0, paddingLeft: 18, color: "#444", fontSize: 14 }}>
-              {summary.next_actions.map((item) => <li key={item}>{item}</li>)}
-            </ul>
-          </div>
-          <TextArea readOnly value={summary.customer_email_draft} />
-          <TextArea readOnly value={summary.erp_notification_text} />
-        </div>
-      )}
-    </Card>
-  );
-}
-
-function ActionWithList({
-  title,
-  children,
-  onSubmit,
-  submitLabel,
-  disabled,
-  records,
-  empty,
-  t,
-}: {
-  title: string;
-  children: ReactNode;
-  onSubmit: (e: FormEvent) => void;
-  submitLabel: string;
-  disabled: boolean;
-  records: ReactNode[];
-  empty: string;
-  t: (key: MessageKey) => string;
-}) {
-  return (
-    <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 340px) minmax(0, 1fr)", gap: 14 }}>
-      <Card>
-        <form onSubmit={onSubmit}>
-          <h3 style={{ margin: "0 0 10px", fontSize: 15 }}>{title}</h3>
-          <div style={{ display: "grid", gap: 9 }}>{children}</div>
-          <Button disabled={disabled} style={{ marginTop: 10 }}>{submitLabel}</Button>
-        </form>
-      </Card>
-      <Card>
-        <h3 style={{ margin: "0 0 10px", fontSize: 15 }}>{t("common.records")}</h3>
-        {records.length === 0 ? <p style={{ margin: 0, color: "#999", fontSize: 13 }}>{empty}</p> : <div style={{ display: "grid", gap: 9 }}>{records}</div>}
-      </Card>
-    </div>
-  );
-}
-
-function EmptyState({ message, action }: { message: string; action?: ReactNode }) {
-  return (
-    <Card style={{ color: "#777", fontSize: 14, lineHeight: 1.5 }}>
-      <p style={{ margin: action ? "0 0 10px" : 0 }}>{message}</p>
-      {action}
-    </Card>
-  );
-}
-
-function Info({ label, value }: { label: string; value: string }) {
-  return (
-    <div style={{ borderTop: "1px solid #eee", paddingTop: 10 }}>
-      <p style={{ margin: "0 0 3px", color: "#999", fontSize: 11, fontWeight: 800 }}>{label}</p>
-      <p style={{ margin: 0, color: "#222", fontSize: 14 }}>{value}</p>
-    </div>
-  );
-}
-
-function Row({ left, right, meta }: { left: string; right: string; meta: string }) {
-  return (
-    <div style={{ borderTop: "1px solid #f1f1f1", paddingTop: 9 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-        <strong style={{ fontSize: 13, color: "#222" }}>{left}</strong>
-        <span style={{ fontSize: 12, color: "#666" }}>{right}</span>
-      </div>
-      {meta && <p style={{ margin: "3px 0 0", fontSize: 12, color: "#999" }}>{meta}</p>}
     </div>
   );
 }
