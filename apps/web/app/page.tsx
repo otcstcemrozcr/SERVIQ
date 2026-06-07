@@ -5,19 +5,47 @@ import { useRouter } from "next/navigation";
 import { Button, TextInput } from "@/components/ui";
 import { Activity, Target, Building2 } from "lucide-react";
 
+import { sendOtp, verifyOtp } from "@/lib/api";
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [code, setCode] = useState("");
+  const [step, setStep] = useState<1 | 2>(1);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  function handleLogin(e: FormEvent) {
+  async function handleSendOtp(e: FormEvent) {
     e.preventDefault();
     setLoading(true);
-    // Simulate login delay
-    setTimeout(() => {
-      router.push("/serviq");
-    }, 600);
+    setError("");
+    try {
+      await sendOtp(email);
+      setStep(2);
+    } catch (err: any) {
+      setError(err.message || "Failed to send code.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleVerifyOtp(e: FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    try {
+      const res = await verifyOtp(email, code);
+      if (res.api_key) {
+        localStorage.setItem("serviq_api_key", res.api_key);
+        router.push("/serviq");
+      } else {
+        setError("Invalid response from server.");
+      }
+    } catch (err: any) {
+      setError(err.message || "Invalid or expired code.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -103,34 +131,53 @@ export default function LoginPage() {
             <h2 style={{ fontSize: 20, fontWeight: 700, color: "#0f172a", margin: "0 0 4px 0" }}>Sign in</h2>
             <p style={{ fontSize: 13, color: "#64748b", margin: "0 0 24px 0" }}>Welcome back. Enter your credentials.</p>
 
-            <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <div>
-                <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "#334155", marginBottom: 6 }}>Email</label>
-                <TextInput 
-                  type="email" 
-                  required 
-                  value={email} 
-                  onChange={(e) => setEmail(e.target.value)} 
-                  placeholder="emirozcira@gmail.com" 
-                  style={{ width: "100%", background: "#eff6ff" }} 
-                />
-              </div>
-              <div>
-                <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "#334155", marginBottom: 6 }}>Password</label>
-                <TextInput 
-                  type="password" 
-                  required 
-                  value={password} 
-                  onChange={(e) => setPassword(e.target.value)} 
-                  placeholder="••••••••" 
-                  style={{ width: "100%", background: "#eff6ff" }} 
-                />
-              </div>
-              
-              <Button type="submit" variant="primary" style={{ width: "100%", marginTop: 8 }} disabled={loading}>
-                {loading ? "Signing in..." : "Sign in"}
-              </Button>
-            </form>
+            {error && <div style={{ background: "#fef2f2", color: "#b91c1c", padding: "10px", borderRadius: "6px", marginBottom: "16px", fontSize: "13px" }}>{error}</div>}
+
+            {step === 1 ? (
+              <form onSubmit={handleSendOtp} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                <div>
+                  <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "#334155", marginBottom: 6 }}>Email</label>
+                  <TextInput 
+                    type="email" 
+                    required 
+                    value={email} 
+                    onChange={(e) => setEmail(e.target.value)} 
+                    placeholder="emirozcira@gmail.com" 
+                    style={{ width: "100%", background: "#eff6ff" }} 
+                  />
+                </div>
+                
+                <Button type="submit" variant="primary" style={{ width: "100%", marginTop: 8 }} disabled={loading}>
+                  {loading ? "Gönderiliyor..." : "Devam Et"}
+                </Button>
+              </form>
+            ) : (
+              <form onSubmit={handleVerifyOtp} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                <div>
+                  <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "#334155", marginBottom: 6 }}>6 Haneli Doğrulama Kodu</label>
+                  <input 
+                    type="text" 
+                    maxLength={6}
+                    required 
+                    value={code} 
+                    onChange={(e) => setCode(e.target.value)} 
+                    placeholder="000000" 
+                    style={{ 
+                      width: "100%", background: "#eff6ff", border: "1px solid #cbd5e1", 
+                      padding: "12px", borderRadius: "6px", textAlign: "center", 
+                      fontSize: "24px", letterSpacing: "8px", outline: "none" 
+                    }} 
+                  />
+                  <div style={{ marginTop: 8, fontSize: 12, color: "#64748b", textAlign: "right" }}>
+                    <button type="button" onClick={() => setStep(1)} style={{ background: "none", border: "none", color: "#3b82f6", cursor: "pointer", padding: 0 }}>Geri dön</button>
+                  </div>
+                </div>
+                
+                <Button type="submit" variant="primary" style={{ width: "100%", marginTop: 8 }} disabled={loading || code.length !== 6}>
+                  {loading ? "Doğrulanıyor..." : "Giriş Yap"}
+                </Button>
+              </form>
+            )}
 
             <div style={{ marginTop: 24, textAlign: "center", fontSize: 13, color: "#64748b" }}>
               New to ServiQ AI? <a href="#" style={{ color: "#3b82f6", textDecoration: "none" }}>Create an organization</a>

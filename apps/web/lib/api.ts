@@ -421,3 +421,24 @@ export async function getServiqAssistantSummary(
     body: JSON.stringify({ work_order_id: workOrderId }),
   });
 }
+
+// ---------------------------------------------------------------------------
+// 2FA / OTP Authentication
+// ---------------------------------------------------------------------------
+
+export async function sendOtp(email: string): Promise<{ success: boolean; message: string }> {
+  return apiFetch<{ success: boolean; message: string }>("/auth/send-otp", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+}
+
+export async function verifyOtp(email: string, code: string): Promise<{ success: boolean; api_key: string; message: string }> {
+  return apiFetch<{ success: boolean; api_key: string; message: string }>("/auth/verify-otp", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, code }),
+  });
+}
+

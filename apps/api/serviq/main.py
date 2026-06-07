@@ -14,7 +14,7 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from .auth import require_current_user
-from .routes import serviq
+from .routes import auth_routes, serviq
 
 logger = logging.getLogger("serviq.api")
 
@@ -142,6 +142,7 @@ app.add_middleware(
 # ---------------------------------------------------------------------------
 _auth = [Depends(require_current_user)]
 
+app.include_router(auth_routes.router)
 app.include_router(serviq.router, dependencies=_auth)
 
 

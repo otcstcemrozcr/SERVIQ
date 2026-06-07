@@ -240,3 +240,19 @@ class AssistantSummaryOut(BaseModel):
     totals: AssistantSummaryTotals
     customer_email_draft: str
     erp_notification_text: str
+
+
+class SendOtpRequest(BaseModel):
+    email: str
+
+
+class VerifyOtpRequest(BaseModel):
+    email: str
+    code: str
+
+
+class VerifyOtpResponse(BaseModel):
+    success: bool
+    api_key: str | None = None
+    message: str | None = None
+

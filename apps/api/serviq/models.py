@@ -182,3 +182,13 @@ class ServiqServiceReport(Base, TimestampMixin):
     pdf_url: Mapped[str | None] = mapped_column(Text)
 
     work_order: Mapped[ServiqWorkOrder] = relationship(back_populates="reports")
+
+
+class ServiqVerificationToken(Base, TimestampMixin):
+    __tablename__ = "serviq_verification_tokens"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    email: Mapped[str] = mapped_column(String(240), index=True, nullable=False)
+    token: Mapped[str] = mapped_column(String(10), unique=True, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
