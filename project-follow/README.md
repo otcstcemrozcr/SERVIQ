@@ -17,7 +17,8 @@ Proje takip klasörü. Repo ile birlikte commit edilir, VS Code Explorer'da gör
 - **[03-status-2026-05-30.md](03-status-2026-05-30.md)** — Phase 0 tamamlandı (commit `e5af2e0`): 4 kontrat uyumsuzluğu kapandı, pytest yeşil. Env rename ertelendi. Kalan 8 açık soru sıradaki oturumda.
 - **[04-status-2026-05-31.md](04-status-2026-05-31.md)** — i18n Stage A tamamlandı (commit `b8de224`): dashboard TR/EN. Deploy planlaması başlandı: Vercel Postgres (Neon) seçildi, FastAPI scaffold tasarlandı. 6 işlem immediate, Stage B ve 8 soru kaldı.
 - **[05-status-2026-05-31.md](05-status-2026-05-31.md)** — project-follow süreci iyileştirildi, i18n Stage B tamamlandı, `tsc` ve `next build` doğrulandı. Sıradaki ana iş deploy.
-- **[06-status-2026-06-04.md](06-status-2026-06-04.md)** — CURRENT. Neon production DB kuruldu, backend/frontend Vercel deploy edildi, live API smoke testleri geçti.
+- **[06-status-2026-06-04.md](06-status-2026-06-04.md)** — Neon production DB kuruldu, backend/frontend Vercel deploy edildi, live API smoke testleri geçti.
+- **[07-ideas-2026-06-07.md](07-ideas-2026-06-07.md)** — CURRENT. Ürün/İş/İçerik fikirleri: 10+7+7 tek satırlık fikir listesi. Pilot ve go-to-market için stratejik yönler.
 
 > Not: Aynı dosyalar Claude'un kalıcı hafızasında da duruyor (`~/.claude/projects/c--Users-ozcir-Desktop-ServiQ/memory/`). Buradaki kopya **insan-okur** içindir; Claude otomatik olarak hafıza yolundakini yükler.
 
