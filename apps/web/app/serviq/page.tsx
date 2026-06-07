@@ -354,7 +354,7 @@ export default function ServiqPage() {
               <div style={{ fontSize: 14, fontWeight: 600 }}>Emir</div>
               <div style={{ fontSize: 12, color: colors.muted }}>Admin</div>
             </div>
-            <button onClick={() => setShowConnection(true)} style={{ background: "transparent", border: "none", cursor: "pointer", display: "flex", title: "Ayarlar" }}>
+            <button onClick={() => setShowConnection(true)} title="Ayarlar" style={{ background: "transparent", border: "none", cursor: "pointer", display: "flex" }}>
               <Settings size={20} color={colors.text} />
             </button>
             <button style={{ background: "transparent", border: "none", cursor: "pointer", display: "flex" }}>
