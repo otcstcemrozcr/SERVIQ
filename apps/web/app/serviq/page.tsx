@@ -7,7 +7,6 @@ import {
   addServiqSignature,
   addServiqTimeEntry,
   completeServiqWorkOrder,
-  createServiqWorkOrder,
   downloadServiqReportPdf,
   getServiqAssistantSummary,
   getServiqReport,
@@ -23,7 +22,7 @@ import {
 } from "@/lib/api";
 import { Badge, Button, Card, Field, SelectInput, TextArea, TextInput, colors } from "@/components/ui";
 import { LanguageToggle, localeTag, useLocale, useT, type MessageKey } from "@/lib/i18n";
-import { Briefcase, Settings, Plus, Menu, X, ArrowLeft, Play, CheckCircle, Package, Clock, PenTool, CreditCard, Sparkles, AlertCircle } from "lucide-react";
+import { Briefcase, Settings, Plus, Menu, ArrowLeft, Play, CheckCircle, Package, Clock, PenTool, CreditCard, Sparkles, AlertCircle, LayoutDashboard, CheckSquare, LogOut, FileText } from "lucide-react";
 
 import { WorkOrderDetail } from "../../components/serviq/WorkOrderDetail";
 import { MaterialUsageTable } from "../../components/serviq/MaterialUsageTable";
@@ -36,25 +35,6 @@ const DEFAULT_ORG_ID = "11111111-1111-1111-1111-111111111111";
 const DEMO_ORDERS_KEY = "serviq_demo_orders";
 
 type Tab = "details" | "materials" | "time" | "sign" | "payment" | "assistant";
-type NewWorkOrderFormState = {
-  orderNo: string;
-  title: string;
-  priority: string;
-  scheduledDate: string;
-  scheduledTime: string;
-  visitNotes: string;
-  customerName: string;
-  customerEmail: string;
-  customerPhone: string;
-  customerAddress: string;
-  billToAccount: boolean;
-  equipmentName: string;
-  equipmentModel: string;
-  serialNumber: string;
-  warrantyStatus: string;
-  technicianName: string;
-  technicianPhone: string;
-};
 
 const statusColor: Record<string, string> = {
   OPEN: colors.primary,
@@ -63,31 +43,6 @@ const statusColor: Record<string, string> = {
   CANCELLED: colors.muted,
 };
 
-function compactDate(value: string | null, locale: string) {
-  if (!value) return "-";
-  return new Date(value).toLocaleString(locale, {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-function toDatetimeLocal(value: Date) {
-  const offset = value.getTimezoneOffset() * 60000;
-  return new Date(value.getTime() - offset).toISOString().slice(0, 16);
-}
-
-function fromDatetimeLocal(value: string) {
-  return value ? new Date(value).toISOString() : null;
-}
-
-function scheduledInputToIso(date: string, time: string) {
-  if (!date) return null;
-  const normalizedTime = /^\d{2}:\d{2}$/.test(time) ? time : "09:00";
-  return new Date(`${date}T${normalizedTime}`).toISOString();
-}
-
 function loadDemoOrders() {
   if (typeof window === "undefined") return [];
   try {
@@ -95,10 +50,6 @@ function loadDemoOrders() {
   } catch {
     return [];
   }
-}
-
-function saveDemoOrders(orders: ServiqWorkOrder[]) {
-  localStorage.setItem(DEMO_ORDERS_KEY, JSON.stringify(orders));
 }
 
 function friendlyError(message: string, t: (key: MessageKey, vars?: Record<string, string | number>) => string) {
@@ -178,7 +129,6 @@ export default function ServiqPage() {
     [orders, selectedId],
   );
   const canMutate = selected && !["COMPLETED", "CANCELLED"].includes(selected.status);
-  const hasApiKey = Boolean(auth.apiKey.trim());
 
   async function refresh(nextSelectedId?: string) {
     setLoading(true);
@@ -230,6 +180,15 @@ export default function ServiqPage() {
     } finally {
       setBusy("");
     }
+  }
+
+  function toDatetimeLocal(value: Date) {
+    const offset = value.getTimezoneOffset() * 60000;
+    return new Date(value.getTime() - offset).toISOString().slice(0, 16);
+  }
+
+  function fromDatetimeLocal(value: string) {
+    return value ? new Date(value).toISOString() : null;
   }
 
   async function beginVisit() {
@@ -330,22 +289,26 @@ export default function ServiqPage() {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: colors.soft, overflow: "hidden" }}>
-      {/* Enterprise Top Navbar */}
-      <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 24px", background: "#0f172a", color: "#fff", zIndex: 10 }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: colors.soft, overflow: "hidden", fontFamily: "system-ui, -apple-system, sans-serif" }}>
+      {/* OpenCRM Style Top Navbar */}
+      <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 24px", background: "#ffffff", color: colors.text, borderBottom: `1px solid ${colors.border}`, zIndex: 10 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <button className="mobile-only" onClick={() => setShowList(!showList)} style={{ background: "transparent", border: "none", color: "#fff", cursor: "pointer" }}>
+          <button className="mobile-only" onClick={() => setShowList(!showList)} style={{ background: "transparent", border: "none", color: colors.text, cursor: "pointer" }}>
             <Menu size={24} />
           </button>
-          <Briefcase size={24} color={colors.primary} />
-          <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, letterSpacing: "0.02em" }}>SERVIQ</h1>
-          <Badge variant="soft" color="#cbd5e1" style={{ marginLeft: 8 }}>ENTERPRISE</Badge>
+          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, letterSpacing: "-0.02em", color: colors.text }}>SERVIQ <span style={{ color: colors.primary }}>AI</span></h1>
         </div>
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
           <LanguageToggle />
-          <Button variant="ghost" onClick={() => setShowConnection(!showConnection)} style={{ color: "#fff" }}>
-            <Settings size={18} />
-          </Button>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, paddingLeft: 16, borderLeft: `1px solid ${colors.border}` }}>
+            <div style={{ textAlign: "right" }} className="desktop-only">
+              <div style={{ fontSize: 14, fontWeight: 600 }}>Emir</div>
+              <div style={{ fontSize: 12, color: colors.muted }}>Admin</div>
+            </div>
+            <button style={{ background: "transparent", border: "none", cursor: "pointer", display: "flex" }}>
+              <LogOut size={20} color={colors.text} />
+            </button>
+          </div>
         </div>
       </header>
 
@@ -353,17 +316,18 @@ export default function ServiqPage() {
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
         
         {/* Sidebar: Work Orders List */}
-        <aside className={`work-list ${showList ? 'is-open' : ''}`} style={{ width: 320, background: "#fff", borderRight: `1px solid ${colors.border}`, display: "flex", flexDirection: "column", zIndex: 5 }}>
-          <div style={{ padding: "16px 20px", borderBottom: `1px solid ${colors.border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <h2 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: colors.text, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-              {t("serviq.workOrders")}
-            </h2>
-            <Button variant="ghost" onClick={() => setShowCreate(true)} style={{ padding: 4 }}>
-              <Plus size={18} />
-            </Button>
-          </div>
+        <aside className={`work-list ${showList ? 'is-open' : ''}`} style={{ width: 280, background: "#ffffff", borderRight: `1px solid ${colors.border}`, display: "flex", flexDirection: "column", zIndex: 5 }}>
           
-          <div style={{ flex: 1, overflowY: "auto", padding: 12, display: "grid", alignContent: "start", gap: 8 }}>
+          <div style={{ flex: 1, overflowY: "auto", padding: "16px 0", display: "flex", flexDirection: "column" }}>
+            <div style={{ padding: "0 16px 8px 24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h2 style={{ margin: 0, fontSize: 12, fontWeight: 700, color: colors.muted, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                {t("serviq.workOrders")}
+              </h2>
+              <Button variant="ghost" onClick={() => setShowCreate(true)} style={{ padding: 4 }}>
+                <Plus size={16} color={colors.muted} />
+              </Button>
+            </div>
+
             {loading ? (
               <p style={{ textAlign: "center", color: colors.muted, fontSize: 13, padding: 20 }}>{t("serviq.loadingWorkOrders")}</p>
             ) : orders.length === 0 ? (
@@ -372,64 +336,74 @@ export default function ServiqPage() {
                 <Button onClick={() => setShowCreate(true)} variant="primary" style={{ width: "100%" }}>{t("serviq.createWorkOrder")}</Button>
               </div>
             ) : (
-              orders.map((order) => (
-                <button
-                  key={order.id}
-                  onClick={() => { setSelectedId(order.id); setShowList(false); }}
-                  style={{
-                    textAlign: "left",
-                    padding: "14px 16px",
-                    background: selected?.id === order.id ? "#f0f6ff" : "transparent",
-                    border: `1px solid ${selected?.id === order.id ? colors.primary : "transparent"}`,
-                    borderRadius: 6,
-                    cursor: "pointer",
-                    transition: "all 0.2s",
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: colors.text }}>{order.order_no}</span>
-                    <StatusPill status={order.status} t={t} />
-                  </div>
-                  <div style={{ fontSize: 13, color: colors.text, fontWeight: 500, marginBottom: 4 }}>{order.customer.name}</div>
-                  <div style={{ fontSize: 12, color: colors.muted }}>{order.equipment?.name}</div>
-                  <div style={{ fontSize: 11, color: colors.muted, marginTop: 8 }}>{compactDate(order.created_at, localeName)}</div>
-                </button>
-              ))
+              <nav style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                {orders.map((order) => {
+                  const isActive = selected?.id === order.id;
+                  return (
+                    <button
+                      key={order.id}
+                      onClick={() => { setSelectedId(order.id); setShowList(false); }}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 12,
+                        textAlign: "left",
+                        padding: "12px 16px",
+                        margin: "0 12px",
+                        background: isActive ? "#eff6ff" : "transparent",
+                        color: isActive ? colors.primary : colors.muted,
+                        borderRadius: 8,
+                        cursor: "pointer",
+                        transition: "all 0.2s",
+                        border: "none",
+                        fontWeight: isActive ? 600 : 500,
+                      }}
+                    >
+                      <Briefcase size={20} color={isActive ? colors.primary : colors.muted} />
+                      <div style={{ flex: 1, overflow: "hidden" }}>
+                        <div style={{ fontSize: 14, whiteSpace: "nowrap", textOverflow: "ellipsis", overflow: "hidden", color: isActive ? colors.primary : colors.text }}>
+                          {order.customer.name}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </nav>
             )}
           </div>
         </aside>
 
         {/* Main Content Area */}
-        <main style={{ flex: 1, overflowY: "auto", padding: "24px 32px", display: "flex", flexDirection: "column" }} className="main-content">
+        <main style={{ flex: 1, overflowY: "auto", padding: "32px", display: "flex", flexDirection: "column" }} className="main-content">
           {notice && (
-            <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#166534", padding: "12px 16px", borderRadius: 6, marginBottom: 20, display: "flex", alignItems: "center", gap: 8, fontSize: 14 }}>
+            <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#166534", padding: "12px 16px", borderRadius: 8, marginBottom: 24, display: "flex", alignItems: "center", gap: 8, fontSize: 14 }}>
               <CheckCircle size={18} /> {notice}
             </div>
           )}
           {error && (
-            <div style={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#b91c1c", padding: "12px 16px", borderRadius: 6, marginBottom: 20, display: "flex", alignItems: "center", gap: 8, fontSize: 14 }}>
+            <div style={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#b91c1c", padding: "12px 16px", borderRadius: 8, marginBottom: 24, display: "flex", alignItems: "center", gap: 8, fontSize: 14 }}>
               <AlertCircle size={18} /> {error}
             </div>
           )}
 
           {!selected ? (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flex: 1, color: colors.muted }}>
-              <Briefcase size={48} color="#cbd5e1" style={{ marginBottom: 16 }} />
-              <p style={{ fontSize: 16, fontWeight: 500 }}>{t("serviq.selectOrCreate")}</p>
+              <LayoutDashboard size={48} color="#cbd5e1" style={{ marginBottom: 16 }} />
+              <p style={{ fontSize: 16, fontWeight: 500 }}>Select a work order from the sidebar</p>
             </div>
           ) : (
             <div style={{ display: "grid", gap: 24, maxWidth: 1200, margin: "0 auto", width: "100%" }}>
-              {/* Header Card */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", borderBottom: `1px solid ${colors.border}`, paddingBottom: 20 }}>
+              {/* Header */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 8 }}>
                 <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+                  <h2 style={{ margin: "0 0 8px 0", fontSize: 24, fontWeight: 700, color: colors.text, letterSpacing: "-0.01em" }}>{selected.title}</h2>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <span style={{ fontSize: 14, color: colors.muted, fontWeight: 500 }}>{selected.order_no}</span>
                     <StatusPill status={selected.status} t={t} />
-                    <span style={{ fontSize: 14, color: colors.muted, fontWeight: 600 }}>{selected.order_no}</span>
                   </div>
-                  <h2 style={{ margin: 0, fontSize: 28, fontWeight: 700, color: colors.text }}>{selected.title}</h2>
                 </div>
                 
-                {/* Desktop Sticky Actions */}
+                {/* Desktop Actions */}
                 <div className="desktop-actions" style={{ display: "flex", gap: 12 }}>
                   {selected.status === "OPEN" && (
                     <Button onClick={beginVisit} disabled={Boolean(busy)} variant="primary">
@@ -441,16 +415,16 @@ export default function ServiqPage() {
                       <Button onClick={endVisit} disabled={Boolean(busy)} variant="outline">
                         <Clock size={16} /> {t("serviq.endVisit")}
                       </Button>
-                      <Button onClick={completeSelected} disabled={Boolean(busy)} variant="success">
-                        <CheckCircle size={16} /> {t("serviq.complete")}
+                      <Button onClick={completeSelected} disabled={Boolean(busy)} variant="primary">
+                        <CheckSquare size={16} /> {t("serviq.complete")}
                       </Button>
                     </>
                   )}
                 </div>
               </div>
 
-              {/* Enterprise Tabs */}
-              <nav className="enterprise-tabs" style={{ display: "flex", gap: 32, borderBottom: `1px solid ${colors.border}`, paddingBottom: 0 }}>
+              {/* Clean Tabs */}
+              <nav className="enterprise-tabs" style={{ display: "flex", gap: 32, borderBottom: `1px solid ${colors.border}` }}>
                 {(["details", "materials", "time", "sign", "payment", "assistant"] as const).map((tab) => (
                   <button
                     key={tab}
@@ -513,9 +487,9 @@ export default function ServiqPage() {
         </main>
       </div>
 
-      {/* Mobile Sticky Actions (Bottom) */}
+      {/* Mobile Sticky Actions */}
       {selected && canMutate && (
-        <div className="mobile-only mobile-actions" style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#fff", padding: "16px", borderTop: `1px solid ${colors.border}`, display: "flex", gap: 12, zIndex: 20 }}>
+        <div className="mobile-only mobile-actions" style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#fff", padding: "16px", borderTop: `1px solid ${colors.border}`, display: "flex", gap: 12, zIndex: 20, boxShadow: "0 -4px 6px -1px rgba(0, 0, 0, 0.05)" }}>
           {selected.status === "OPEN" && (
             <Button onClick={beginVisit} disabled={Boolean(busy)} variant="primary" style={{ width: "100%" }}>
               <Play size={18} /> {t("serviq.startVisit")}
@@ -526,8 +500,8 @@ export default function ServiqPage() {
               <Button onClick={endVisit} disabled={Boolean(busy)} variant="outline" style={{ flex: 1 }}>
                 <Clock size={18} />
               </Button>
-              <Button onClick={completeSelected} disabled={Boolean(busy)} variant="success" style={{ flex: 2 }}>
-                <CheckCircle size={18} /> {t("serviq.complete")}
+              <Button onClick={completeSelected} disabled={Boolean(busy)} variant="primary" style={{ flex: 2 }}>
+                <CheckSquare size={18} /> {t("serviq.complete")}
               </Button>
             </>
           )}
@@ -542,7 +516,7 @@ export default function ServiqPage() {
           .work-list {
             position: absolute;
             left: -100%;
-            top: 60px;
+            top: 65px;
             bottom: 0;
             transition: left 0.3s;
           }
@@ -559,8 +533,11 @@ export default function ServiqPage() {
           .desktop-actions {
             display: none !important;
           }
+          .desktop-only {
+            display: none !important;
+          }
           .main-content {
-            padding: 16px 16px 80px 16px !important; /* padding bottom for sticky actions */
+            padding: 16px 16px 80px 16px !important;
           }
           .enterprise-tabs {
             gap: 16px !important;

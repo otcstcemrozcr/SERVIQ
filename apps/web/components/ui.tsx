@@ -8,14 +8,15 @@ import type {
 } from "react";
 
 export const colors = {
-  border: "#cbd5e1", // Slate 300
-  text: "#0f172a", // Slate 900
+  border: "#e2e8f0", // Slate 200
+  text: "#1e293b", // Slate 800
   muted: "#64748b", // Slate 500
-  soft: "#f1f5f9", // Slate 100
-  primary: "#0369a1", // Enterprise Blue (Sky 700)
-  success: "#15803d", // Green 700
-  danger: "#b91c1c", // Red 700
-  warning: "#b45309", // Amber 700
+  soft: "#f8fafc", // Slate 50
+  primary: "#3b82f6", // Blue 500
+  primaryHover: "#2563eb", // Blue 600
+  success: "#10b981", // Emerald 500
+  danger: "#ef4444", // Red 500
+  warning: "#f59e0b", // Amber 500
 };
 
 export function Card({ children, style, id, className }: { children: ReactNode; style?: CSSProperties; id?: string; className?: string }) {
@@ -25,10 +26,10 @@ export function Card({ children, style, id, className }: { children: ReactNode; 
       className={className}
       style={{
         border: `1px solid ${colors.border}`,
-        borderRadius: 6,
-        padding: 20,
+        borderRadius: 8,
+        padding: 24,
         background: "#ffffff",
-        boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05)",
+        boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
         ...style,
       }}
     >
