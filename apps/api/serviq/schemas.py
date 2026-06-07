@@ -60,7 +60,7 @@ class CustomerOut(CustomerBase):
     id: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class TechnicianBase(BaseModel):
@@ -74,7 +74,7 @@ class TechnicianOut(TechnicianBase):
     id: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class EquipmentBase(BaseModel):
@@ -89,7 +89,7 @@ class EquipmentOut(EquipmentBase):
     id: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class MaterialCreate(BaseModel):
@@ -108,7 +108,7 @@ class MaterialOut(MaterialCreate):
     id: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class TimeTrackingCreate(BaseModel):
@@ -124,7 +124,7 @@ class TimeTrackingOut(TimeTrackingCreate):
     id: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class SignatureCreate(BaseModel):
@@ -138,7 +138,7 @@ class SignatureOut(SignatureCreate):
     id: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class PaymentCreate(BaseModel):
@@ -156,7 +156,7 @@ class PaymentOut(PaymentCreate):
     id: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class WorkOrderCreate(BaseModel):
@@ -202,7 +202,7 @@ class WorkOrderOut(BaseModel):
     updated_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class CompletionResult(BaseModel):

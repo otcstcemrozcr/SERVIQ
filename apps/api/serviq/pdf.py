@@ -1,105 +1,138 @@
-"""Small PDF renderer for SERVIQ service reports.
-
-This intentionally avoids a heavyweight dependency. It emits a simple PDF with
-plain text content suitable for downloading, archiving, and emailing later.
-"""
+"""PDF renderer for SERVIQ service reports using fpdf2."""
 from __future__ import annotations
 
-from textwrap import wrap
+import base64
+import io
+
+from fpdf import FPDF
 
 
-def _pdf_text(value: object) -> str:
-    return str(value).replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+class ServiceReportPDF(FPDF):
+    def header(self):
+        # Header - Company Info
+        self.set_font("helvetica", "B", 18)
+        self.set_text_color(0, 120, 212)  # OpenCRM Blue
+        self.cell(0, 8, "ServiQ AI", ln=True, align="L")
+
+        self.set_font("helvetica", "I", 10)
+        self.set_text_color(100, 100, 100)
+        self.cell(0, 6, "Field Service Report", ln=True, align="L")
+
+        # Line separator
+        self.set_draw_color(200, 200, 200)
+        self.line(10, self.get_y() + 2, 200, self.get_y() + 2)
+        self.ln(6)
+
+    def footer(self):
+        self.set_y(-15)
+        self.set_font("helvetica", "I", 8)
+        self.set_text_color(128, 128, 128)
+        self.cell(0, 10, f"Page {self.page_no()}/{{nb}}", align="C")
 
 
 def build_service_report_pdf(report: dict) -> bytes:
-    lines = ["SERVIQ Service Report", ""]
+    pdf = ServiceReportPDF()
+    pdf.add_page()
+
+    # 1. Info Block
     work_order = report.get("work_order", {})
     customer = report.get("customer", {})
     equipment = report.get("equipment") or {}
     technician = report.get("technician") or {}
 
-    lines.extend(
-        [
-            f"Report generated: {report.get('generated_at', '-')}",
-            f"Work order: {work_order.get('order_no', '-')} - {work_order.get('title', '-')}",
-            f"Status: {work_order.get('status', '-')}",
-            f"Customer: {customer.get('name', '-')}",
-            f"Equipment: {equipment.get('name', '-')}",
-            f"Technician: {technician.get('name', '-')}",
-            "",
-            "Materials",
-        ]
-    )
-    materials = report.get("materials", [])
-    if materials:
-        for item in materials:
-            lines.append(
-                f"- {item.get('material_code', '-')}: {item.get('material_name', '-')} "
-                f"{item.get('quantity', '-')} {item.get('unit', '')} ({item.get('status', '-')})"
-            )
-    else:
-        lines.append("- none")
-
-    lines.extend(["", "Time Tracking"])
-    time_entries = report.get("time_tracking", [])
-    if time_entries:
-        for item in time_entries:
-            lines.append(
-                f"- labor={item.get('labor_hours', 0)}, travel={item.get('travel_hours', 0)}, "
-                f"waiting={item.get('waiting_hours', 0)}"
-            )
-    else:
-        lines.append("- none")
-
-    lines.extend(["", "Payments"])
-    payments = report.get("payments", [])
-    if payments:
-        for item in payments:
-            lines.append(
-                f"- {item.get('method', '-')}: {item.get('status', '-')} "
-                f"{item.get('amount', '-') or ''} {item.get('currency', '')}"
-            )
-    else:
-        lines.append("- none")
-
-    stream_lines: list[str] = ["BT", "/F1 11 Tf", "50 790 Td", "14 TL"]
-    first = True
-    for line in lines:
-        wrapped = wrap(line, width=90) or [""]
-        for part in wrapped:
-            if first:
-                stream_lines.append(f"({_pdf_text(part)}) Tj")
-                first = False
-            else:
-                stream_lines.append(f"T* ({_pdf_text(part)}) Tj")
-    stream_lines.append("ET")
-    content = "\n".join(stream_lines).encode("latin-1", errors="replace")
-
-    objects = [
-        b"<< /Type /Catalog /Pages 2 0 R >>",
-        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 842] "
-        b"/Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>",
-        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
-        b"<< /Length " + str(len(content)).encode() + b" >>\nstream\n" + content + b"\nendstream",
+    info_data = [
+        ("Work Order:", f"{work_order.get('order_no', '-')} - {work_order.get('title', '-')}"),
+        ("Date:", str(report.get("generated_at", "-"))),
+        ("Status:", str(work_order.get("status", "-"))),
+        ("Customer:", str(customer.get("name", "-"))),
+        ("Equipment:", str(equipment.get("name", "-"))),
+        ("Technician:", str(technician.get("name", "-"))),
     ]
 
-    output = bytearray(b"%PDF-1.4\n")
-    offsets = [0]
-    for index, obj in enumerate(objects, start=1):
-        offsets.append(len(output))
-        output.extend(f"{index} 0 obj\n".encode())
-        output.extend(obj)
-        output.extend(b"\nendobj\n")
+    pdf.set_font("helvetica", size=10)
+    pdf.set_text_color(50, 50, 50)
+    for label, val in info_data:
+        pdf.set_font("helvetica", "B", 10)
+        pdf.cell(30, 6, label, ln=0)
+        pdf.set_font("helvetica", "", 10)
+        pdf.cell(0, 6, val, ln=1)
 
-    xref_offset = len(output)
-    output.extend(f"xref\n0 {len(objects) + 1}\n".encode())
-    output.extend(b"0000000000 65535 f \n")
-    for offset in offsets[1:]:
-        output.extend(f"{offset:010d} 00000 n \n".encode())
-    output.extend(
-        f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\n"
-        f"startxref\n{xref_offset}\n%%EOF\n".encode()
-    )
-    return bytes(output)
+    pdf.ln(5)
+
+    # 2. Materials Table
+    materials = report.get("materials", [])
+    if materials:
+        pdf.set_font("helvetica", "B", 12)
+        pdf.cell(0, 8, "Materials Used", ln=True)
+
+        pdf.set_fill_color(240, 240, 240)
+        pdf.set_font("helvetica", "B", 9)
+        pdf.cell(40, 7, "Code", border=1, fill=True)
+        pdf.cell(80, 7, "Name", border=1, fill=True)
+        pdf.cell(30, 7, "Quantity", border=1, fill=True)
+        pdf.cell(40, 7, "Status", border=1, fill=True, ln=True)
+
+        pdf.set_font("helvetica", "", 9)
+        for item in materials:
+            pdf.cell(40, 7, str(item.get("material_code", "-")), border=1)
+            pdf.cell(80, 7, str(item.get("material_name", "-")), border=1)
+            pdf.cell(30, 7, f"{item.get('quantity', '-')} {item.get('unit', '')}", border=1)
+            pdf.cell(40, 7, str(item.get("status", "-")), border=1, ln=True)
+        pdf.ln(5)
+
+    # 3. Time Tracking Table
+    time_entries = report.get("time_tracking", [])
+    if time_entries:
+        pdf.set_font("helvetica", "B", 12)
+        pdf.cell(0, 8, "Time Tracking", ln=True)
+
+        pdf.set_fill_color(240, 240, 240)
+        pdf.set_font("helvetica", "B", 9)
+        pdf.cell(30, 7, "Labor (hrs)", border=1, fill=True)
+        pdf.cell(30, 7, "Travel (hrs)", border=1, fill=True)
+        pdf.cell(130, 7, "Technician Note", border=1, fill=True, ln=True)
+
+        pdf.set_font("helvetica", "", 9)
+        for item in time_entries:
+            pdf.cell(30, 7, str(item.get("labor_hours", 0)), border=1)
+            pdf.cell(30, 7, str(item.get("travel_hours", 0)), border=1)
+            pdf.cell(130, 7, str(item.get("technician_comment", "-") or "-"), border=1, ln=True)
+        pdf.ln(5)
+
+    # 4. Signatures (base64 embedded)
+    signatures = report.get("signatures", [])
+    if signatures:
+        pdf.set_font("helvetica", "B", 12)
+        pdf.cell(0, 8, "Signatures", ln=True)
+
+        y_before_sig = pdf.get_y()
+        x_offset = 10
+
+        for sig in signatures:
+            sig_name = sig.get("signer_name", "-")
+            sig_type = sig.get("signer_type", "UNKNOWN")
+            sig_data = sig.get("image_data_url", "")
+
+            # Print label
+            pdf.set_font("helvetica", "B", 9)
+            pdf.set_xy(x_offset, y_before_sig)
+            pdf.cell(80, 5, f"{sig_type}: {sig_name}", ln=2)
+
+            # Render image
+            if sig_data and sig_data.startswith("data:image"):
+                try:
+                    header, b64_str = sig_data.split(",", 1)
+                    img_bytes = base64.b64decode(b64_str)
+                    img_file = io.BytesIO(img_bytes)
+                    pdf.image(img_file, x=x_offset, y=pdf.get_y() + 2, w=60)
+                except Exception:
+                    pdf.cell(80, 5, "(Signature image error)", ln=2)
+            else:
+                pdf.cell(80, 5, "(No visual signature)", ln=2)
+
+            x_offset += 90
+            if x_offset > 150:
+                x_offset = 10
+                y_before_sig = pdf.get_y() + 35
+
+    return pdf.output(dest="S")

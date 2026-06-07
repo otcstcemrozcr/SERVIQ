@@ -206,7 +206,11 @@ export default function ServiqPage() {
     const storedApiKey = localStorage.getItem("serviq_api_key") ?? "";
     localStorage.setItem("serviq_org_id", storedOrgId);
     setAuth({ orgId: storedOrgId, apiKey: storedApiKey });
-    refresh();
+    if (!storedApiKey) {
+      setShowConnection(true);
+    } else {
+      refresh();
+    }
   }, []);
 
   async function runAction(label: string, action: () => Promise<ServiqWorkOrder | void>, success: string) {
@@ -350,6 +354,9 @@ export default function ServiqPage() {
               <div style={{ fontSize: 14, fontWeight: 600 }}>Emir</div>
               <div style={{ fontSize: 12, color: colors.muted }}>Admin</div>
             </div>
+            <button onClick={() => setShowConnection(true)} style={{ background: "transparent", border: "none", cursor: "pointer", display: "flex", title: "Ayarlar" }}>
+              <Settings size={20} color={colors.text} />
+            </button>
             <button style={{ background: "transparent", border: "none", cursor: "pointer", display: "flex" }}>
               <LogOut size={20} color={colors.text} />
             </button>
@@ -550,6 +557,31 @@ export default function ServiqPage() {
               </Button>
             </>
           )}
+        </div>
+      )}
+
+      {showConnection && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ background: "#fff", padding: 24, borderRadius: 12, width: "100%", maxWidth: 400 }}>
+            <h3 style={{ margin: "0 0 16px", fontSize: 18, fontWeight: 700 }}>Connection Settings</h3>
+            <div style={{ display: "grid", gap: 16 }}>
+              <Field label="API Key">
+                <TextInput type="password" value={auth.apiKey} onChange={(e) => setAuth(v => ({...v, apiKey: e.target.value}))} />
+              </Field>
+              <Field label="Organization ID">
+                <TextInput value={auth.orgId} onChange={(e) => setAuth(v => ({...v, orgId: e.target.value}))} />
+              </Field>
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 24 }}>
+              <Button onClick={() => setShowConnection(false)} variant="outline">İptal</Button>
+              <Button variant="primary" onClick={() => {
+                localStorage.setItem("serviq_api_key", auth.apiKey);
+                localStorage.setItem("serviq_org_id", auth.orgId);
+                setShowConnection(false);
+                refresh();
+              }}>Kaydet</Button>
+            </div>
+          </div>
         </div>
       )}
 

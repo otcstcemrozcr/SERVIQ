@@ -190,17 +190,17 @@ def create_work_order(
     org: OrgContext = Depends(require_role(Role.ANALYST)),
     db: Session = Depends(db_session),
 ) -> dict:
-    customer = ServiqCustomer(org_id=org.org_id, **body.customer.dict())
+    customer = ServiqCustomer(org_id=org.org_id, **body.customer.model_dump())
     db.add(customer)
 
     equipment = None
     if body.equipment is not None:
-        equipment = ServiqEquipment(org_id=org.org_id, customer=customer, **body.equipment.dict())
+        equipment = ServiqEquipment(org_id=org.org_id, customer=customer, **body.equipment.model_dump())
         db.add(equipment)
 
     technician = None
     if body.technician is not None:
-        technician = ServiqTechnician(org_id=org.org_id, **body.technician.dict())
+        technician = ServiqTechnician(org_id=org.org_id, **body.technician.model_dump())
         db.add(technician)
 
     work_order = ServiqWorkOrder(
@@ -239,7 +239,7 @@ def update_work_order(
 ) -> dict:
     work_order = _get_work_order(db, org.org_id, work_order_id)
     ensure_mutable(work_order)
-    for field, value in body.dict(exclude_unset=True).items():
+    for field, value in body.model_dump(exclude_unset=True).items():
         setattr(work_order, field, value.value if isinstance(value, WorkOrderStatus) else value)
     db.commit()
     return _serialize_work_order(_get_work_order(db, org.org_id, work_order_id))
@@ -266,7 +266,7 @@ def add_material(
 ) -> dict:
     work_order = _get_work_order(db, org.org_id, work_order_id)
     ensure_mutable(work_order)
-    db.add(ServiqWorkOrderMaterial(org_id=org.org_id, work_order_id=work_order.id, **body.dict()))
+    db.add(ServiqWorkOrderMaterial(org_id=org.org_id, work_order_id=work_order.id, **body.model_dump()))
     db.commit()
     return _serialize_work_order(_get_work_order(db, org.org_id, work_order_id))
 
@@ -280,7 +280,7 @@ def add_time_tracking(
 ) -> dict:
     work_order = _get_work_order(db, org.org_id, work_order_id)
     ensure_mutable(work_order)
-    db.add(ServiqTimeTracking(org_id=org.org_id, work_order_id=work_order.id, **body.dict()))
+    db.add(ServiqTimeTracking(org_id=org.org_id, work_order_id=work_order.id, **body.model_dump()))
     db.commit()
     return _serialize_work_order(_get_work_order(db, org.org_id, work_order_id))
 
@@ -294,7 +294,7 @@ def add_signature(
 ) -> dict:
     work_order = _get_work_order(db, org.org_id, work_order_id)
     ensure_mutable(work_order)
-    db.add(ServiqSignature(org_id=org.org_id, work_order_id=work_order.id, **body.dict()))
+    db.add(ServiqSignature(org_id=org.org_id, work_order_id=work_order.id, **body.model_dump()))
     db.commit()
     return _serialize_work_order(_get_work_order(db, org.org_id, work_order_id))
 
@@ -308,10 +308,10 @@ def record_payment(
     work_order = _get_work_order(db, org.org_id, body.work_order_id)
     ensure_mutable(work_order)
     provider_result = ManualPaymentProvider().authorize(body)
-    payment = ServiqPaymentDetails(org_id=org.org_id, **body.dict())
+    payment = ServiqPaymentDetails(org_id=org.org_id, **body.model_dump())
     db.add(payment)
     db.commit()
-    return {"payment_id": payment.id, "provider": provider_result.dict()}
+    return {"payment_id": payment.id, "provider": provider_result.model_dump()}
 
 
 @router.post("/work-orders/{work_order_id}/complete", response_model=CompletionResult)
@@ -373,7 +373,7 @@ def send_email(
 ) -> dict:
     work_order = _get_work_order(db, org.org_id, body.work_order_id)
     report = work_order.reports[-1].data if work_order.reports else build_service_report(work_order)
-    return EmailProviderStub().send_service_report(body, report).dict()
+    return EmailProviderStub().send_service_report(body, report).model_dump()
 
 
 @router.post("/erp/sync")
