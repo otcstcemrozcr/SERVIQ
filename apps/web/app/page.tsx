@@ -1,17 +1,18 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, useRef, useEffect, type FormEvent, KeyboardEvent, ClipboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Button, TextInput } from "@/components/ui";
-import { Activity, Target, Building2 } from "lucide-react";
+import { Activity, Target, Building2, RefreshCw } from "lucide-react";
 
 import { sendOtp, verifyOtp } from "@/lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
-  const [code, setCode] = useState("");
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [step, setStep] = useState<1 | 2>(1);
+  const [timeLeft, setTimeLeft] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -22,6 +23,11 @@ export default function LoginPage() {
     try {
       await sendOtp(email);
       setStep(2);
+      setTimeLeft(60);
+      setOtp(["", "", "", "", "", ""]);
+      setTimeout(() => {
+        inputRefs.current[0]?.focus();
+      }, 100);
     } catch (err: any) {
       setError(err.message || "Failed to send code.");
     } finally {
@@ -31,18 +37,83 @@ export default function LoginPage() {
 
   async function handleVerifyOtp(e: FormEvent) {
     e.preventDefault();
+    const finalCode = otp.join("");
+    if (finalCode.length !== 6) {
+      setError("Lütfen 6 haneli kodu eksiksiz girin.");
+      return;
+    }
     setLoading(true);
     setError("");
     try {
-      const res = await verifyOtp(email, code);
+      const res = await verifyOtp(email, finalCode);
       if (res.api_key) {
         localStorage.setItem("serviq_api_key", res.api_key);
         router.push("/serviq");
       } else {
-        setError("Invalid response from server.");
+        setError("Sunucudan geçersiz yanıt alındı.");
       }
     } catch (err: any) {
-      setError(err.message || "Invalid or expired code.");
+      setError(err.message || "Geçersiz veya süresi dolmuş kod.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // --- OTP Input Mantığı ---
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  useEffect(() => {
+    if (step === 2 && timeLeft > 0) {
+      const timer = setInterval(() => setTimeLeft((prev) => prev - 1), 1000);
+      return () => clearInterval(timer);
+    }
+  }, [step, timeLeft]);
+
+  function handleOtpChange(index: number, value: string) {
+    if (value.length > 1) return; // Sadece tek karakter
+    const newOtp = [...otp];
+    newOtp[index] = value;
+    setOtp(newOtp);
+
+    // Bir sonraki kutuya geç
+    if (value !== "" && index < 5) {
+      inputRefs.current[index + 1]?.focus();
+    }
+  }
+
+  function handleOtpKeyDown(index: number, e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Backspace" && !otp[index] && index > 0) {
+      // Önceki kutuya geri dön
+      inputRefs.current[index - 1]?.focus();
+    }
+  }
+
+  function handleOtpPaste(e: ClipboardEvent<HTMLInputElement>) {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6).split("");
+    if (pastedData.length > 0) {
+      const newOtp = [...otp];
+      for (let i = 0; i < 6; i++) {
+        newOtp[i] = pastedData[i] || "";
+      }
+      setOtp(newOtp);
+      // Odaklanacak son kutuyu bul
+      const lastFilledIndex = Math.min(pastedData.length - 1, 5);
+      inputRefs.current[lastFilledIndex]?.focus();
+    }
+  }
+
+  async function handleResend() {
+    if (timeLeft > 0 || loading) return;
+    setLoading(true);
+    setError("");
+    try {
+      await sendOtp(email);
+      setTimeLeft(60);
+      setOtp(["", "", "", "", "", ""]);
+      inputRefs.current[0]?.focus();
+    } catch (err: any) {
+      setError(err.message || "Kod yeniden gönderilemedi.");
     } finally {
       setLoading(false);
     }
@@ -142,38 +213,84 @@ export default function LoginPage() {
                     required 
                     value={email} 
                     onChange={(e) => setEmail(e.target.value)} 
-                    placeholder="emirozcira@gmail.com" 
+                    placeholder="ornek@sirket.com" 
                     style={{ width: "100%", background: "#eff6ff" }} 
                   />
                 </div>
                 
-                <Button type="submit" variant="primary" style={{ width: "100%", marginTop: 8 }} disabled={loading}>
+                <Button type="submit" variant="primary" style={{ width: "100%", marginTop: 8 }} disabled={loading || !email}>
                   {loading ? "Gönderiliyor..." : "Devam Et"}
                 </Button>
               </form>
             ) : (
-              <form onSubmit={handleVerifyOtp} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <form onSubmit={handleVerifyOtp} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
                 <div>
-                  <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "#334155", marginBottom: 6 }}>6 Haneli Doğrulama Kodu</label>
-                  <input 
-                    type="text" 
-                    maxLength={6}
-                    required 
-                    value={code} 
-                    onChange={(e) => setCode(e.target.value)} 
-                    placeholder="000000" 
-                    style={{ 
-                      width: "100%", background: "#eff6ff", border: "1px solid #cbd5e1", 
-                      padding: "12px", borderRadius: "6px", textAlign: "center", 
-                      fontSize: "24px", letterSpacing: "8px", outline: "none" 
-                    }} 
-                  />
-                  <div style={{ marginTop: 8, fontSize: 12, color: "#64748b", textAlign: "right" }}>
-                    <button type="button" onClick={() => setStep(1)} style={{ background: "none", border: "none", color: "#3b82f6", cursor: "pointer", padding: 0 }}>Geri dön</button>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 12 }}>
+                    <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "#334155" }}>
+                      6 Haneli Doğrulama Kodu
+                    </label>
+                    <span style={{ fontSize: 12, color: "#64748b" }}>
+                      {email} <button type="button" onClick={() => setStep(1)} style={{ background: "none", border: "none", color: "#3b82f6", cursor: "pointer", padding: 0, textDecoration: "underline" }}>(Değiştir)</button>
+                    </span>
+                  </div>
+
+                  <div style={{ display: "flex", gap: 8, justifyContent: "space-between" }}>
+                    {otp.map((digit, index) => (
+                      <input
+                        key={index}
+                        ref={(el) => {
+                          inputRefs.current[index] = el;
+                        }}
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={1}
+                        value={digit}
+                        onChange={(e) => handleOtpChange(index, e.target.value.replace(/\D/g, ""))}
+                        onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                        onPaste={handleOtpPaste}
+                        style={{
+                          width: "48px",
+                          height: "56px",
+                          background: "#eff6ff",
+                          border: `1px solid ${digit ? "#3b82f6" : "#cbd5e1"}`,
+                          borderRadius: "8px",
+                          textAlign: "center",
+                          fontSize: "24px",
+                          fontWeight: 600,
+                          color: "#0f172a",
+                          outline: "none",
+                          boxShadow: digit ? "0 0 0 2px rgba(59,130,246,0.1)" : "none",
+                          transition: "all 0.2s ease"
+                        }}
+                        onFocus={(e) => e.target.select()}
+                      />
+                    ))}
                   </div>
                 </div>
+
+                <div style={{ display: "flex", justifyContent: "center", marginTop: -4 }}>
+                  <button
+                    type="button"
+                    onClick={handleResend}
+                    disabled={timeLeft > 0 || loading}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: timeLeft > 0 ? "#94a3b8" : "#3b82f6",
+                      cursor: timeLeft > 0 ? "not-allowed" : "pointer",
+                      fontSize: 13,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      fontWeight: 500
+                    }}
+                  >
+                    <RefreshCw size={14} className={loading && timeLeft === 0 ? "animate-spin" : ""} />
+                    {timeLeft > 0 ? `${timeLeft} saniye sonra tekrar gönder` : "Kodu Tekrar Gönder"}
+                  </button>
+                </div>
                 
-                <Button type="submit" variant="primary" style={{ width: "100%", marginTop: 8 }} disabled={loading || code.length !== 6}>
+                <Button type="submit" variant="primary" style={{ width: "100%", marginTop: 4 }} disabled={loading || otp.join("").length !== 6}>
                   {loading ? "Doğrulanıyor..." : "Giriş Yap"}
                 </Button>
               </form>
