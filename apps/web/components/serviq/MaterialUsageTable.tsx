@@ -1,10 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import type { FormEvent } from "react";
-import { Card, Button, Field, SelectInput, TextInput, Badge } from "@/components/ui";
+import { Card, Button, Field, SelectInput, TextInput, Badge, colors } from "@/components/ui";
 import { type ServiqMaterialStatus } from "@/lib/api";
 import { type MessageKey } from "@/lib/i18n";
-import { Package, Plus } from "lucide-react";
+import { Package, Plus, ScanLine, ArrowDownCircle, ArrowUpCircle, X } from "lucide-react";
 
 export function MaterialUsageTable({
   materials,
@@ -30,88 +31,119 @@ export function MaterialUsageTable({
   onSubmit: (e: FormEvent) => void;
   t: (key: MessageKey) => string;
 }) {
+  const [showForm, setShowForm] = useState(false);
+
+  function handleScan() {
+    alert("Barkod tarayıcı başlatılıyor... (Sadece Demo)");
+  }
+
   return (
     <div style={{ display: "grid", gap: 24 }}>
-      <Card>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
-          <Package size={20} color="#0f172a" />
-          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#0f172a" }}>
-            {t("serviq.materialUsage")}
-          </h3>
+      <Card style={{ padding: "24px", display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Package size={20} color={colors.primary} />
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: colors.text }}>
+              {t("serviq.materialUsage")}
+            </h3>
+          </div>
+          <Badge color={colors.muted}>{materials.length} Kayıt</Badge>
         </div>
         
         {materials.length === 0 ? (
-          <div style={{ padding: "32px 0", textAlign: "center", border: "1px dashed #cbd5e1", borderRadius: 6, background: "#f8fafc" }}>
-            <p style={{ margin: 0, color: "#64748b", fontSize: 14 }}>{t("serviq.noMaterials")}</p>
+          <div style={{ padding: "32px 16px", textAlign: "center", border: `1px dashed ${colors.border}`, borderRadius: 8, background: colors.soft }}>
+            <Package size={32} color={colors.muted} style={{ margin: "0 auto 12px", opacity: 0.5 }} />
+            <p style={{ margin: 0, color: colors.muted, fontSize: 14, fontWeight: 500 }}>{t("serviq.noMaterials")}</p>
           </div>
         ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, textAlign: "left" }}>
-              <thead>
-                <tr style={{ borderBottom: "2px solid #e2e8f0", color: "#64748b" }}>
-                  <th style={{ padding: "12px 8px", fontWeight: 600 }}>Code</th>
-                  <th style={{ padding: "12px 8px", fontWeight: 600 }}>Name</th>
-                  <th style={{ padding: "12px 8px", fontWeight: 600 }}>Qty</th>
-                  <th style={{ padding: "12px 8px", fontWeight: 600 }}>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {materials.map((item) => (
-                  <tr key={item.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                    <td style={{ padding: "12px 8px", color: "#0f172a", fontWeight: 500 }}>{item.material_code}</td>
-                    <td style={{ padding: "12px 8px", color: "#334155" }}>{item.material_name}</td>
-                    <td style={{ padding: "12px 8px", color: "#334155" }}>{item.quantity} {item.unit}</td>
-                    <td style={{ padding: "12px 8px" }}>
-                      <Badge variant={item.status === "USED" ? "soft" : "outline"} color={item.status === "USED" ? "#0369a1" : "#64748b"}>
-                        {item.status === "USED" ? t("serviq.used") : t("serviq.returned")}
+          <div style={{ display: "grid", gap: 12 }}>
+            {materials.map((item) => (
+              <div key={item.id} style={{ display: "flex", flexDirection: "column", gap: 8, padding: "16px", border: `1px solid ${colors.border}`, borderRadius: 8, background: "#fff" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: colors.text }}>{item.material_code}</span>
+                      <Badge variant={item.status === "USED" ? "soft" : "outline"} color={item.status === "USED" ? colors.primary : colors.muted}>
+                        {item.status === "USED" ? (
+                          <span style={{ display: "flex", alignItems: "center", gap: 4 }}><ArrowDownCircle size={12} /> {t("serviq.used")}</span>
+                        ) : (
+                          <span style={{ display: "flex", alignItems: "center", gap: 4 }}><ArrowUpCircle size={12} /> {t("serviq.returned")}</span>
+                        )}
                       </Badge>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+                    <p style={{ margin: 0, color: colors.muted, fontSize: 14, fontWeight: 500 }}>{item.material_name}</p>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: colors.text }}>{item.quantity} <span style={{ fontSize: 12, fontWeight: 600, color: colors.muted }}>{item.unit}</span></div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
+        )}
+
+        {canMutate && !showForm && (
+          <Button variant="outline" onClick={() => setShowForm(true)} style={{ width: "100%", justifyContent: "center", borderStyle: "dashed" }}>
+            <Plus size={16} /> Yeni Malzeme Ekle
+          </Button>
         )}
       </Card>
 
-      <Card style={{ background: "#f8fafc", border: "1px dashed #cbd5e1" }}>
-        <form onSubmit={onSubmit}>
-          <h4 style={{ margin: "0 0 16px", fontSize: 14, fontWeight: 600, color: "#0f172a" }}>
-            {t("serviq.addMaterial")}
-          </h4>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
-            <Field label={t("serviq.materialCode")}>
-              <TextInput required placeholder="e.g. MAT-001" value={material.material_code} onChange={(e) => setMaterial((v) => ({ ...v, material_code: e.target.value }))} />
-            </Field>
-            <Field label={t("serviq.materialName")}>
-              <TextInput required placeholder="e.g. Filter" value={material.material_name} onChange={(e) => setMaterial((v) => ({ ...v, material_name: e.target.value }))} />
-            </Field>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-              <Field label="Qty">
-                <TextInput required type="number" min="0.001" step="0.001" value={material.quantity} onChange={(e) => setMaterial((v) => ({ ...v, quantity: Number(e.target.value) }))} />
+      {showForm && (
+        <Card style={{ background: colors.soft, border: `1px solid ${colors.border}`, padding: 24 }}>
+          <form onSubmit={(e) => {
+            onSubmit(e);
+            setShowForm(false);
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: colors.text }}>
+                {t("serviq.addMaterial")}
+              </h4>
+              <button type="button" onClick={() => setShowForm(false)} style={{ background: "transparent", border: "none", cursor: "pointer", color: colors.muted, padding: 4 }}>
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+              <Button type="button" variant="outline" onClick={handleScan} style={{ flex: 1, justifyContent: "center", background: "#fff", borderColor: colors.primary, color: colors.primary }}>
+                <ScanLine size={18} style={{ marginRight: 8 }} /> Barkod Tara
+              </Button>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
+              <Field label={t("serviq.materialCode")}>
+                <TextInput required placeholder="Örn. MAT-001" value={material.material_code} onChange={(e) => setMaterial((v) => ({ ...v, material_code: e.target.value }))} />
               </Field>
-              <Field label="Unit">
-                <TextInput required value={material.unit} onChange={(e) => setMaterial((v) => ({ ...v, unit: e.target.value }))} />
+              <Field label={t("serviq.materialName")}>
+                <TextInput required placeholder="Örn. Hava Filtresi" value={material.material_name} onChange={(e) => setMaterial((v) => ({ ...v, material_name: e.target.value }))} />
+              </Field>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <Field label="Miktar">
+                  <TextInput required type="number" min="0.001" step="0.001" value={material.quantity} onChange={(e) => setMaterial((v) => ({ ...v, quantity: Number(e.target.value) }))} />
+                </Field>
+                <Field label="Birim">
+                  <TextInput required placeholder="Adet" value={material.unit} onChange={(e) => setMaterial((v) => ({ ...v, unit: e.target.value }))} />
+                </Field>
+              </div>
+              <Field label="Durum">
+                <SelectInput value={material.status} onChange={(e) => setMaterial((v) => ({ ...v, status: e.target.value as ServiqMaterialStatus }))}>
+                  <option value="USED">{t("serviq.used")}</option>
+                  <option value="RETURNED">{t("serviq.returned")}</option>
+                </SelectInput>
+              </Field>
+              <Field label={t("serviq.warehouseLocation") || "Depo Lokasyonu"}>
+                <TextInput placeholder="Örn. Aracım" value={material.warehouse_location} onChange={(e) => setMaterial((v) => ({ ...v, warehouse_location: e.target.value }))} />
               </Field>
             </div>
-            <Field label="Status">
-              <SelectInput value={material.status} onChange={(e) => setMaterial((v) => ({ ...v, status: e.target.value as ServiqMaterialStatus }))}>
-                <option value="USED">{t("serviq.used")}</option>
-                <option value="RETURNED">{t("serviq.returned")}</option>
-              </SelectInput>
-            </Field>
-            <Field label={t("serviq.warehouseLocation") || "Warehouse"}>
-              <TextInput placeholder="e.g. WH-1" value={material.warehouse_location} onChange={(e) => setMaterial((v) => ({ ...v, warehouse_location: e.target.value }))} />
-            </Field>
-          </div>
-          <div style={{ marginTop: 20, display: "flex", justifyContent: "flex-end" }}>
-            <Button disabled={!canMutate || busy} variant="primary">
-              <Plus size={16} />
-              {t("serviq.addMaterial")}
-            </Button>
-          </div>
-        </form>
-      </Card>
+            <div style={{ marginTop: 24, display: "flex", justifyContent: "flex-end" }}>
+              <Button type="submit" disabled={!canMutate || busy} variant="primary" style={{ width: "100%" }}>
+                <Plus size={16} />
+                Listeye Ekle
+              </Button>
+            </div>
+          </form>
+        </Card>
+      )}
     </div>
   );
 }

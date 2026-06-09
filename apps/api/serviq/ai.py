@@ -126,3 +126,41 @@ def build_service_summary(work_order: "ServiqWorkOrder") -> dict:
         "customer_email_draft": customer_email_draft,
         "erp_notification_text": erp_notification_text,
     }
+
+
+def handle_chat_message(work_order: "ServiqWorkOrder", message: str) -> dict:
+    """Simulated conversational AI responses based on keywords."""
+    msg_lower = message.lower()
+    
+    if "özet" in msg_lower or "summary" in msg_lower:
+        summary_data = build_service_summary(work_order)
+        return {
+            "reply": summary_data["summary"] + "\n\nŞu anki eksikleriniz:\n- " + "\n- ".join(summary_data["missing"]),
+            "action_suggested": None
+        }
+        
+    if "geçmiş" in msg_lower or "history" in msg_lower:
+        equipment_name = work_order.equipment.name if work_order.equipment else "Bu cihaz"
+        return {
+            "reply": f"{equipment_name} için son 6 ayda 2 servis kaydı bulunuyor. Son kayıt 45 gün önce 'Filtre Değişimi' olarak kapatılmış. Aynı arızanın tekrar etmesi durumunda anakart kontrolü önerilir.",
+            "action_suggested": "Kılavuzu Göster"
+        }
+        
+    if "kılavuz" in msg_lower or "manual" in msg_lower:
+        return {
+            "reply": "Seçili cihazın tamir kılavuzu sisteme yüklü değil, ancak benzer serilerin hata kodlarına göre E-42 hatası 'Su basıncı sensör arızası' anlamına gelmektedir. Sensör kablolarını kontrol etmenizi öneririm.",
+            "action_suggested": None
+        }
+        
+    if "müşteri" in msg_lower and ("sms" in msg_lower or "mesaj" in msg_lower or "haber" in msg_lower):
+        customer_name = work_order.customer.name if work_order.customer else "Müşteri"
+        return {
+            "reply": f"{customer_name} adlı müşteriye 'Teknisyenimiz yola çıkmıştır, 30 dakika içinde adresinizde olacaktır' şeklinde SMS gönderildi.",
+            "action_suggested": None
+        }
+        
+    # Fallback
+    return {
+        "reply": f"'{message}' komutunu anladım. Ancak şu an demo modundayım ve sadece belirli komutlara (Özetle, Geçmişi Göster, Müşteriye SMS at) yanıt verebiliyorum.",
+        "action_suggested": "İş Emrini Özetle"
+    }

@@ -8,12 +8,14 @@ import {
   addServiqTimeEntry,
   completeServiqWorkOrder,
   downloadServiqReportPdf,
+  flushOfflineQueue,
   getServiqAssistantSummary,
   getServiqReport,
   listServiqWorkOrders,
   recordServiqPayment,
-  startServiqWorkOrder,
   sendServiqEmail,
+  startServiqWorkOrder,
+  syncErp,
   type ServiqMaterialStatus,
   type ServiqPaymentMethod,
   type ServiqPaymentStatus,
@@ -22,7 +24,8 @@ import {
 } from "@/lib/api";
 import { Badge, Button, Card, Field, SelectInput, TextArea, TextInput, colors } from "@/components/ui";
 import { LanguageToggle, localeTag, useLocale, useT, type MessageKey } from "@/lib/i18n";
-import { Briefcase, Settings, Plus, Menu, ArrowLeft, Play, CheckCircle, Package, Clock, PenTool, CreditCard, Sparkles, AlertCircle, LayoutDashboard, CheckSquare, LogOut, FileText } from "lucide-react";
+import { subscribeQueue, OfflineQueuedError } from "@/lib/offlineQueue";
+import { LogOut, Settings, Menu, Play, CheckCircle, Package, Clock, PenTool, CreditCard, Sparkles, AlertCircle, LayoutDashboard, CheckSquare, Cloud, CloudOff, Briefcase, Plus, RefreshCw } from "lucide-react";
 
 import { WorkOrderDetail } from "../../components/serviq/WorkOrderDetail";
 import { MaterialUsageTable } from "../../components/serviq/MaterialUsageTable";
@@ -135,8 +138,32 @@ export default function ServiqPage() {
   const [busy, setBusy] = useState("");
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const [listFilter, setListFilter] = useState<"active" | "completed">("active");
+  const [refreshTick, setRefreshTick] = useState(0);
+  const [offlineQueueLength, setOfflineQueueLength] = useState(0);
+  const [isOnline, setIsOnline] = useState(true);
 
   const [auth, setAuth] = useState({ orgId: DEFAULT_ORG_ID, apiKey: "" });
+
+  useEffect(() => {
+    setIsOnline(navigator.onLine);
+    const handleOnline = () => {
+      setIsOnline(true);
+      flushOfflineQueue();
+      setTimeout(() => setRefreshTick((n) => n + 1), 1000);
+    };
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    const unsubscribe = subscribeQueue((queue) => {
+      setOfflineQueueLength(queue.length);
+    });
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+      unsubscribe();
+    };
+  }, []);
   
   // Forms states
   const [material, setMaterial] = useState({
@@ -173,6 +200,14 @@ export default function ServiqPage() {
     () => orders.find((order) => order.id === selectedId) ?? orders[0] ?? null,
     [orders, selectedId],
   );
+  
+  const filteredOrders = useMemo(() => {
+    return orders.filter(order => {
+      if (listFilter === "active") return order.status === "OPEN" || order.status === "IN_PROGRESS";
+      return order.status === "COMPLETED" || order.status === "CANCELLED";
+    });
+  }, [orders, listFilter]);
+
   const canMutate = selected && !["COMPLETED", "CANCELLED"].includes(selected.status);
 
   async function refresh(nextSelectedId?: string) {
@@ -211,7 +246,7 @@ export default function ServiqPage() {
     } else {
       refresh();
     }
-  }, []);
+  }, [refreshTick]);
 
   async function runAction(label: string, action: () => Promise<ServiqWorkOrder | void>, success: string) {
     setBusy(label);
@@ -224,8 +259,12 @@ export default function ServiqPage() {
         setSelectedId(updated.id);
       }
       setNotice(success);
-    } catch (e) {
-      setError(friendlyError(e instanceof Error ? e.message : t("error.actionFailed", { label }), t));
+    } catch (e: any) {
+      if (e instanceof OfflineQueuedError) {
+        setNotice(`⚠️ ${(t as any)("notice.offlineQueued", { default: "İnternet yok, cihazınıza kaydedildi. Bağlantı gelince gönderilecek." })}`);
+      } else {
+        setError(friendlyError(e instanceof Error ? e.message : t("error.actionFailed", { label }), t));
+      }
     } finally {
       setBusy("");
     }
@@ -337,17 +376,71 @@ export default function ServiqPage() {
     }
   }
 
+  async function handleErpSync() {
+    setBusy("erp_sync");
+    setError("");
+    try {
+      const res = await syncErp();
+      let summaryText = "";
+      if (res.pushed_to_erp > 0) summaryText += `${res.pushed_to_erp} bitmiş iş faturaya aktarıldı. `;
+      if (res.pulled_from_erp > 0) summaryText += `SAP'den ${res.pulled_from_erp} yeni iş çekildi. `;
+      if (res.pushed_to_erp === 0 && res.pulled_from_erp === 0) summaryText = "Senkronize edilecek yeni veri bulunamadı.";
+      
+      setNotice(summaryText);
+      await refresh();
+    } catch (e) {
+      setError(friendlyError(e instanceof Error ? e.message : "ERP senkronizasyonu başarısız oldu.", t));
+    } finally {
+      setBusy("");
+    }
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: colors.soft, overflow: "hidden", fontFamily: "system-ui, -apple-system, sans-serif" }}>
       {/* OpenCRM Style Top Navbar */}
       <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 24px", background: "#ffffff", color: colors.text, borderBottom: `1px solid ${colors.border}`, zIndex: 10 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <button className="mobile-only" onClick={() => setShowList(!showList)} style={{ background: "transparent", border: "none", color: colors.text, cursor: "pointer" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            {!isOnline && (
+              <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#fef3c7", color: "#d97706", padding: "4px 8px", borderRadius: 16, fontSize: 12, fontWeight: 600 }}>
+                <CloudOff size={14} />
+                <span>Çevrimdışı</span>
+              </div>
+            )}
+            {offlineQueueLength > 0 && (
+              <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#e0f2fe", color: "#0284c7", padding: "4px 8px", borderRadius: 16, fontSize: 12, fontWeight: 600 }}>
+                <Cloud size={14} className={isOnline ? "animate-pulse" : ""} />
+                <span>{offlineQueueLength} bekliyor</span>
+              </div>
+            )}
+          </div>
+          <button onClick={() => setShowList(!showList)} style={{ background: "transparent", border: "none", color: colors.text, cursor: "pointer" }}>
             <Menu size={24} />
           </button>
           <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, letterSpacing: "-0.04em", color: colors.text, fontFamily: "Inter, system-ui, sans-serif" }}>ServiQ <span style={{ color: colors.primary, fontWeight: 700 }}>AI</span></h1>
         </div>
         <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+          <button 
+            onClick={handleErpSync}
+            disabled={busy === "erp_sync"}
+            style={{ 
+              display: "flex", 
+              alignItems: "center", 
+              gap: 8, 
+              background: "#10b981", 
+              color: "white", 
+              border: "none", 
+              padding: "8px 16px", 
+              borderRadius: 6, 
+              fontSize: 14, 
+              fontWeight: 600, 
+              cursor: busy === "erp_sync" ? "not-allowed" : "pointer",
+              opacity: busy === "erp_sync" ? 0.7 : 1
+            }}
+          >
+            <RefreshCw size={16} className={busy === "erp_sync" ? "animate-spin" : ""} />
+            <span className="desktop-only">ERP Senkronizasyonu</span>
+          </button>
           <LanguageToggle />
           <div style={{ display: "flex", alignItems: "center", gap: 12, paddingLeft: 16, borderLeft: `1px solid ${colors.border}` }}>
             <div style={{ textAlign: "right" }} className="desktop-only">
@@ -382,14 +475,31 @@ export default function ServiqPage() {
 
             {loading ? (
               <p style={{ textAlign: "center", color: colors.muted, fontSize: 13, padding: 20 }}>{t("serviq.loadingWorkOrders")}</p>
-            ) : orders.length === 0 ? (
-              <div style={{ textAlign: "center", padding: 20 }}>
-                <p style={{ color: colors.muted, fontSize: 13, marginBottom: 12 }}>{t("serviq.noWorkOrders")}</p>
-                <Button onClick={() => setShowCreate(true)} variant="primary" style={{ width: "100%" }}>{t("serviq.createWorkOrder")}</Button>
-              </div>
             ) : (
-              <nav style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                {orders.map((order) => {
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{ display: "flex", padding: "0 16px", gap: 8 }}>
+                  <button 
+                    onClick={() => setListFilter("active")} 
+                    style={{ flex: 1, padding: "6px 0", borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: "pointer", border: "none", background: listFilter === "active" ? colors.primary : colors.soft, color: listFilter === "active" ? "#fff" : colors.muted }}
+                  >
+                    Aktif İşler
+                  </button>
+                  <button 
+                    onClick={() => setListFilter("completed")} 
+                    style={{ flex: 1, padding: "6px 0", borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: "pointer", border: "none", background: listFilter === "completed" ? colors.primary : colors.soft, color: listFilter === "completed" ? "#fff" : colors.muted }}
+                  >
+                    Geçmiş
+                  </button>
+                </div>
+                
+                {filteredOrders.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: 20 }}>
+                    <p style={{ color: colors.muted, fontSize: 13, marginBottom: 12 }}>{listFilter === "active" ? "Aktif iş bulunmuyor" : "Geçmiş iş bulunmuyor"}</p>
+                    {listFilter === "active" && <Button onClick={() => setShowCreate(true)} variant="primary" style={{ width: "100%" }}>{t("serviq.createWorkOrder")}</Button>}
+                  </div>
+                ) : (
+                  <nav style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    {filteredOrders.map((order) => {
                   const isActive = selected?.id === order.id;
                   return (
                     <button
@@ -421,6 +531,8 @@ export default function ServiqPage() {
                   );
                 })}
               </nav>
+            )}
+              </div>
             )}
           </div>
         </aside>
@@ -504,35 +616,56 @@ export default function ServiqPage() {
 
               {/* Tab Content */}
               <div style={{ paddingTop: 8 }}>
-                {activeTab === "details" && <WorkOrderDetail selected={selected} onViewReport={viewReport} onDownloadPdf={downloadPdf} onEmailReport={emailReport} busy={Boolean(busy)} t={t} localeName={localeName} />}
+                {activeTab === "details" && <WorkOrderDetail selected={selected} onViewReport={viewReport} onDownloadPdf={downloadPdf} onEmailReport={emailReport} onRefresh={() => refresh(selected.id)} busy={Boolean(busy)} t={t} localeName={localeName} />}
                 {activeTab === "materials" && <MaterialUsageTable materials={selected.materials} material={material} setMaterial={setMaterial} canMutate={Boolean(canMutate)} busy={Boolean(busy)} onSubmit={submitMaterial} t={t} />}
                 {activeTab === "time" && <TimeTrackingForm timeEntries={selected.time_entries} timeEntry={timeEntry} setTimeEntry={setTimeEntry} canMutate={Boolean(canMutate)} busy={Boolean(busy)} onSubmit={submitTime} t={t} localeName={localeName} />}
                 {activeTab === "sign" && (
-                  <Card>
-                    <form onSubmit={submitSignature}>
-                      <h3 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 700 }}>{t("serviq.signature")}</h3>
-                      <div style={{ display: "grid", gap: 16 }}>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                          <Field label={t("serviq.signerName")}>
-                            <TextInput required value={signature.signer_name} onChange={(e) => setSignature(v => ({...v, signer_name: e.target.value}))} />
-                          </Field>
-                          <Field label="Signer Type">
-                            <SelectInput value={signature.signer_type} onChange={(e) => setSignature(v => ({...v, signer_type: e.target.value as any}))}>
-                              <option value="CUSTOMER">{t("serviq.customer")}</option>
-                              <option value="TECHNICIAN">{t("serviq.technician")}</option>
-                            </SelectInput>
-                          </Field>
+                  <div style={{ display: "grid", gap: 24 }}>
+                    {selected.signatures && selected.signatures.length > 0 && (
+                      <Card style={{ padding: 24 }}>
+                        <h3 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 700, color: colors.text }}>Alınan İmzalar</h3>
+                        <div style={{ display: "grid", gap: 16 }}>
+                          {selected.signatures.map((sig) => (
+                            <div key={sig.id} style={{ display: "flex", flexDirection: "column", gap: 12, padding: 16, border: `1px solid ${colors.border}`, borderRadius: 8 }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                <span style={{ fontSize: 14, fontWeight: 600, color: colors.text }}>{sig.signer_name}</span>
+                                <Badge color={colors.primary}>{sig.signer_type === "CUSTOMER" ? "Müşteri" : "Teknisyen"}</Badge>
+                              </div>
+                              <img src={sig.image_data_url || ""} alt="Signature" style={{ width: "100%", maxWidth: 400, border: `1px dashed ${colors.border}`, borderRadius: 8, background: "#fff" }} />
+                            </div>
+                          ))}
                         </div>
-                        <SignatureCanvas value={signature.image_data_url} onChange={(v) => setSignature(s => ({...s, image_data_url: v}))} clearLabel={t("serviq.clearSignature")} />
-                      </div>
-                      <div style={{ marginTop: 20, display: "flex", justifyContent: "flex-end" }}>
-                        <Button disabled={!canMutate || Boolean(busy)} variant="primary">{t("serviq.saveSignature")}</Button>
-                      </div>
-                    </form>
-                  </Card>
+                      </Card>
+                    )}
+
+                    {canMutate && (
+                      <Card style={{ background: colors.soft, border: `1px solid ${colors.border}` }}>
+                        <form onSubmit={submitSignature}>
+                          <h3 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 700 }}>{t("serviq.signature")}</h3>
+                          <div style={{ display: "grid", gap: 16 }}>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                              <Field label={t("serviq.signerName")}>
+                                <TextInput required value={signature.signer_name} onChange={(e) => setSignature(v => ({...v, signer_name: e.target.value}))} />
+                              </Field>
+                              <Field label="İmzalayan Tipi">
+                                <SelectInput value={signature.signer_type} onChange={(e) => setSignature(v => ({...v, signer_type: e.target.value as any}))}>
+                                  <option value="CUSTOMER">{t("serviq.customer")}</option>
+                                  <option value="TECHNICIAN">{t("serviq.technician")}</option>
+                                </SelectInput>
+                              </Field>
+                            </div>
+                            <SignatureCanvas value={signature.image_data_url} onChange={(v) => setSignature(s => ({...s, image_data_url: v}))} clearLabel="Temizle" />
+                          </div>
+                          <div style={{ marginTop: 20, display: "flex", justifyContent: "flex-end" }}>
+                            <Button disabled={!canMutate || Boolean(busy) || !signature.image_data_url} variant="primary">{t("serviq.saveSignature")}</Button>
+                          </div>
+                        </form>
+                      </Card>
+                    )}
+                  </div>
                 )}
                 {activeTab === "payment" && <PaymentModal payment={payment} setPayment={setPayment} canMutate={Boolean(canMutate)} busy={Boolean(busy)} onSubmit={submitPayment} t={t} />}
-                {activeTab === "assistant" && <AssistantTab summary={assistantSummary} busy={Boolean(busy)} onRefresh={loadAssistantSummary} t={t} />}
+                {activeTab === "assistant" && <AssistantTab workOrderId={selected.id} t={t} />}
               </div>
             </div>
           )}

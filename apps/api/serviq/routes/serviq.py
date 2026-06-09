@@ -7,10 +7,11 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from ..ai import build_service_summary
+from ..ai import build_service_summary, handle_chat_message
 from ..db.session import get_session
 from ..rbac import OrgContext, Role, require_role
 from ..email import EmailProviderStub
+from ..erp import StubERPAdapter
 from ..models import (
     ServiqCustomer,
     ServiqEquipment,
@@ -28,6 +29,8 @@ from ..reports import build_service_report
 from ..schemas import (
     AssistantSummaryOut,
     AssistantSummaryRequest,
+    AssistantChatRequest,
+    AssistantChatResponse,
     CompletionResult,
     EmailRequest,
     MaterialCreate,
@@ -377,8 +380,12 @@ def send_email(
 
 
 @router.post("/erp/sync")
-def sync_erp() -> dict:
-    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, "SERVIQ ERP sync adapter is not implemented.")
+def sync_erp(
+    org: OrgContext = Depends(require_role(Role.VIEWER)),
+    db: Session = Depends(db_session),
+) -> dict:
+    adapter = StubERPAdapter()
+    return adapter.sync_all(db, org.org_id)
 
 
 @router.post("/ai/service-summary", response_model=AssistantSummaryOut)
@@ -389,3 +396,13 @@ def service_summary(
 ) -> dict:
     work_order = _get_work_order(db, org.org_id, body.work_order_id)
     return build_service_summary(work_order)
+
+
+@router.post("/ai/chat", response_model=AssistantChatResponse)
+def assistant_chat(
+    body: AssistantChatRequest,
+    org: OrgContext = Depends(require_role(Role.VIEWER)),
+    db: Session = Depends(db_session),
+) -> dict:
+    work_order = _get_work_order(db, org.org_id, body.work_order_id)
+    return handle_chat_message(work_order, body.message)

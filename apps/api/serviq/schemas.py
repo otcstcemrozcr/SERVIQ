@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import datetime
 from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class WorkOrderStatus(str, Enum):
@@ -58,9 +58,7 @@ class CustomerBase(BaseModel):
 
 class CustomerOut(CustomerBase):
     id: str
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TechnicianBase(BaseModel):
@@ -72,9 +70,7 @@ class TechnicianBase(BaseModel):
 
 class TechnicianOut(TechnicianBase):
     id: str
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class EquipmentBase(BaseModel):
@@ -87,9 +83,7 @@ class EquipmentBase(BaseModel):
 
 class EquipmentOut(EquipmentBase):
     id: str
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class MaterialCreate(BaseModel):
@@ -106,9 +100,7 @@ class MaterialCreate(BaseModel):
 
 class MaterialOut(MaterialCreate):
     id: str
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TimeTrackingCreate(BaseModel):
@@ -122,9 +114,7 @@ class TimeTrackingCreate(BaseModel):
 
 class TimeTrackingOut(TimeTrackingCreate):
     id: str
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SignatureCreate(BaseModel):
@@ -136,9 +126,7 @@ class SignatureCreate(BaseModel):
 
 class SignatureOut(SignatureCreate):
     id: str
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PaymentCreate(BaseModel):
@@ -154,9 +142,7 @@ class PaymentCreate(BaseModel):
 
 class PaymentOut(PaymentCreate):
     id: str
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class WorkOrderCreate(BaseModel):
@@ -200,9 +186,7 @@ class WorkOrderOut(BaseModel):
     payments: list[PaymentOut] = []
     created_at: datetime
     updated_at: datetime
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CompletionResult(BaseModel):
@@ -256,3 +240,12 @@ class VerifyOtpResponse(BaseModel):
     api_key: str | None = None
     message: str | None = None
 
+
+class AssistantChatRequest(BaseModel):
+    work_order_id: str
+    message: str
+
+
+class AssistantChatResponse(BaseModel):
+    reply: str
+    action_suggested: str | None = None

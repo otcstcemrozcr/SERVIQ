@@ -1,9 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import type { FormEvent } from "react";
-import { Card, Button, Field, TextInput, TextArea, Badge } from "@/components/ui";
+import { Card, Button, Field, TextInput, TextArea, Badge, colors } from "@/components/ui";
 import { type MessageKey } from "@/lib/i18n";
-import { Clock, Plus } from "lucide-react";
+import { Clock, Plus, Play, Square, Settings2 } from "lucide-react";
 
 function compactDate(value: string | null, locale: string) {
   if (!value) return "-";
@@ -41,32 +42,47 @@ export function TimeTrackingForm({
   t: (key: MessageKey, vars?: Record<string, string | number>) => string;
   localeName: string;
 }) {
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
   return (
     <div style={{ display: "grid", gap: 24 }}>
-      <Card>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
-          <Clock size={20} color="#0f172a" />
-          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#0f172a" }}>
-            {t("serviq.timeTracking")}
-          </h3>
+      <Card style={{ padding: "24px", display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Clock size={20} color={colors.primary} />
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: colors.text }}>
+              {t("serviq.timeTracking")}
+            </h3>
+          </div>
+          <Badge color={colors.muted}>{timeEntries.length} Kayıt</Badge>
         </div>
         
         {timeEntries.length === 0 ? (
-          <div style={{ padding: "32px 0", textAlign: "center", border: "1px dashed #cbd5e1", borderRadius: 6, background: "#f8fafc" }}>
-            <p style={{ margin: 0, color: "#64748b", fontSize: 14 }}>{t("serviq.noTimeEntries")}</p>
+          <div style={{ padding: "32px 16px", textAlign: "center", border: `1px dashed ${colors.border}`, borderRadius: 8, background: colors.soft }}>
+            <Clock size={32} color={colors.muted} style={{ margin: "0 auto 12px", opacity: 0.5 }} />
+            <p style={{ margin: 0, color: colors.muted, fontSize: 14, fontWeight: 500 }}>{t("serviq.noTimeEntries")}</p>
           </div>
         ) : (
           <div style={{ display: "grid", gap: 12 }}>
             {timeEntries.map((item) => (
-              <div key={item.id} style={{ display: "flex", justifyContent: "space-between", padding: 16, border: "1px solid #e2e8f0", borderRadius: 6 }}>
-                <div>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
-                    <strong style={{ fontSize: 14, color: "#0f172a" }}>{compactDate(item.arrival_time, localeName)}</strong>
-                    <Badge variant="soft" color="#0369a1">{item.labor_hours}h Labor</Badge>
+              <div key={item.id} style={{ display: "flex", flexDirection: "column", gap: 8, padding: "16px", border: `1px solid ${colors.border}`, borderRadius: 8, background: "#fff" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 8 }}>
+                      <strong style={{ fontSize: 14, color: colors.text }}>
+                        {compactDate(item.arrival_time, localeName)}
+                      </strong>
+                      {(item.labor_hours > 0 || item.travel_hours > 0) && (
+                        <Badge variant="soft" color={colors.primary}>
+                          {item.labor_hours > 0 ? `${item.labor_hours}s Efor ` : ""}
+                          {item.travel_hours > 0 ? `| ${item.travel_hours}s Yol` : ""}
+                        </Badge>
+                      )}
+                    </div>
+                    {item.technician_comment && (
+                      <p style={{ margin: 0, fontSize: 13, color: colors.muted, fontStyle: "italic" }}>"{item.technician_comment}"</p>
+                    )}
                   </div>
-                  {item.technician_comment && (
-                    <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>{item.technician_comment}</p>
-                  )}
                 </div>
               </div>
             ))}
@@ -74,39 +90,62 @@ export function TimeTrackingForm({
         )}
       </Card>
 
-      <Card style={{ background: "#f8fafc", border: "1px dashed #cbd5e1" }}>
+      <Card style={{ background: colors.soft, border: `1px solid ${colors.border}`, padding: 24 }}>
         <form onSubmit={onSubmit}>
-          <h4 style={{ margin: "0 0 16px", fontSize: 14, fontWeight: 600, color: "#0f172a" }}>
+          <h4 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 700, color: colors.text }}>
             {t("serviq.saveTime")}
           </h4>
-          <div style={{ display: "grid", gap: 16 }}>
+          
+          <div style={{ display: "grid", gap: 20 }}>
+            {/* Arrival & Departure */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
               <Field label={t("serviq.arrival")}>
-                <TextInput type="datetime-local" value={timeEntry.arrival_time} onChange={(e) => setTimeEntry((v) => ({ ...v, arrival_time: e.target.value }))} />
+                <div style={{ position: "relative" }}>
+                  <Play size={16} color={colors.success} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }} />
+                  <TextInput type="datetime-local" style={{ paddingLeft: 36 }} value={timeEntry.arrival_time} onChange={(e) => setTimeEntry((v) => ({ ...v, arrival_time: e.target.value }))} />
+                </div>
               </Field>
               <Field label={t("serviq.departure")}>
-                <TextInput type="datetime-local" value={timeEntry.departure_time} onChange={(e) => setTimeEntry((v) => ({ ...v, departure_time: e.target.value }))} />
+                <div style={{ position: "relative" }}>
+                  <Square size={16} color={colors.warning} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }} />
+                  <TextInput type="datetime-local" style={{ paddingLeft: 36 }} value={timeEntry.departure_time} onChange={(e) => setTimeEntry((v) => ({ ...v, departure_time: e.target.value }))} />
+                </div>
               </Field>
+            </div>
+
+            {/* Toggle for Advanced Tracking */}
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <button 
+                type="button" 
+                onClick={() => setShowAdvanced(!showAdvanced)} 
+                style={{ display: "flex", alignItems: "center", gap: 6, background: "transparent", border: "none", color: colors.primary, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+              >
+                <Settings2 size={16} />
+                {showAdvanced ? "Süre Detaylarını Gizle" : "Detaylı Efor ve Yolculuk Süresi Gir"}
+              </button>
             </div>
             
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 16 }}>
-              <Field label="Labor (h)">
-                <TextInput type="number" min="0" step="0.25" value={timeEntry.labor_hours} onChange={(e) => setTimeEntry((v) => ({ ...v, labor_hours: Number(e.target.value) }))} />
-              </Field>
-              <Field label="Travel (h)">
-                <TextInput type="number" min="0" step="0.25" value={timeEntry.travel_hours} onChange={(e) => setTimeEntry((v) => ({ ...v, travel_hours: Number(e.target.value) }))} />
-              </Field>
-              <Field label="Wait (h)">
-                <TextInput type="number" min="0" step="0.25" value={timeEntry.waiting_hours} onChange={(e) => setTimeEntry((v) => ({ ...v, waiting_hours: Number(e.target.value) }))} />
-              </Field>
-            </div>
+            {/* Advanced Hours */}
+            {showAdvanced && (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 16, padding: "16px", background: "#fff", border: `1px solid ${colors.border}`, borderRadius: 8 }}>
+                <Field label="Efor (Saat)">
+                  <TextInput type="number" min="0" step="0.25" value={timeEntry.labor_hours} onChange={(e) => setTimeEntry((v) => ({ ...v, labor_hours: Number(e.target.value) }))} />
+                </Field>
+                <Field label="Yol (Saat)">
+                  <TextInput type="number" min="0" step="0.25" value={timeEntry.travel_hours} onChange={(e) => setTimeEntry((v) => ({ ...v, travel_hours: Number(e.target.value) }))} />
+                </Field>
+                <Field label="Bekleme (Saat)">
+                  <TextInput type="number" min="0" step="0.25" value={timeEntry.waiting_hours} onChange={(e) => setTimeEntry((v) => ({ ...v, waiting_hours: Number(e.target.value) }))} />
+                </Field>
+              </div>
+            )}
 
             <Field label={t("serviq.technicianComment")}>
               <TextArea placeholder={t("serviq.technicianComment")} value={timeEntry.technician_comment} onChange={(e) => setTimeEntry((v) => ({ ...v, technician_comment: e.target.value }))} />
             </Field>
           </div>
-          <div style={{ marginTop: 20, display: "flex", justifyContent: "flex-end" }}>
-            <Button disabled={!canMutate || busy} variant="primary">
+          <div style={{ marginTop: 24, display: "flex", justifyContent: "flex-end" }}>
+            <Button disabled={!canMutate || busy} variant="primary" style={{ width: "100%" }}>
               <Plus size={16} />
               {t("serviq.saveTime")}
             </Button>

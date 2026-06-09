@@ -1,4 +1,7 @@
-"""ERP adapter extension points for SERVIQ."""
+"""ERP Integration Adapter for SERVIQ.
+
+Provides a stub implementation for syncing work orders with external ERP systems like SAP, Logo, and Mikro.
+"""
 from __future__ import annotations
 
 import logging
@@ -7,7 +10,7 @@ from typing import Protocol
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..models import ServiqWorkOrder
+from .models import ServiqWorkOrder
 
 logger = logging.getLogger(__name__)
 

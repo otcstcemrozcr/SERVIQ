@@ -1,12 +1,39 @@
+import { enqueueRequest, getQueue, clearQueue, OfflineQueuedError } from "./offlineQueue";
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export async function apiFetch<T = unknown>(path: string, init?: RequestInit): Promise<T> {
+  const isRead = !init?.method || init.method.toUpperCase() === "GET";
+  
+  if (typeof navigator !== "undefined" && !navigator.onLine && !isRead) {
+    enqueueRequest(path, init || {});
+    throw new OfflineQueuedError("No internet connection. Request queued offline.");
+  }
+
   const res = await fetch(`${API_URL}${path}`, init);
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText);
     throw new Error(`API ${path} ${res.status}: ${text}`);
   }
   return res.json() as Promise<T>;
+}
+
+export async function flushOfflineQueue(): Promise<void> {
+  const queue = getQueue();
+  if (queue.length === 0) return;
+
+  // Optimistically clear the queue
+  clearQueue();
+
+  for (const req of queue) {
+    try {
+      await fetch(`${API_URL}${req.path}`, req.init);
+    } catch (e) {
+      console.error("Failed to sync offline request", req, e);
+      // Re-enqueue failed request
+      enqueueRequest(req.path, req.init);
+    }
+  }
 }
 
 export interface UploadResult {
@@ -325,6 +352,17 @@ export async function createServiqWorkOrder(
   });
 }
 
+export async function updateServiqWorkOrder(
+  id: string,
+  body: Partial<ServiqWorkOrderCreate>,
+): Promise<ServiqWorkOrder> {
+  return apiFetch<ServiqWorkOrder>(`/serviq/work-orders/${id}`, {
+    method: "PUT",
+    headers: serviqHeaders(),
+    body: JSON.stringify(body),
+  });
+}
+
 export async function startServiqWorkOrder(workOrderId: string): Promise<ServiqWorkOrder> {
   return apiFetch<ServiqWorkOrder>(`/serviq/work-orders/${workOrderId}/start`, {
     method: "POST",
@@ -422,6 +460,22 @@ export async function getServiqAssistantSummary(
   });
 }
 
+export interface ServiqAssistantChatResponse {
+  reply: string;
+  action_suggested: string | null;
+}
+
+export async function sendAssistantChat(
+  workOrderId: string,
+  message: string,
+): Promise<ServiqAssistantChatResponse> {
+  return apiFetch<ServiqAssistantChatResponse>("/serviq/ai/chat", {
+    method: "POST",
+    headers: serviqHeaders(),
+    body: JSON.stringify({ work_order_id: workOrderId, message }),
+  });
+}
+
 // ---------------------------------------------------------------------------
 // 2FA / OTP Authentication
 // ---------------------------------------------------------------------------
@@ -439,6 +493,24 @@ export async function verifyOtp(email: string, code: string): Promise<{ success:
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, code }),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// ERP Integration
+// ---------------------------------------------------------------------------
+
+export interface ErpSyncResult {
+  pushed_to_erp: number;
+  pulled_from_erp: number;
+  failed: number;
+  logs: string[];
+}
+
+export async function syncErp(): Promise<ErpSyncResult> {
+  return apiFetch<ErpSyncResult>("/serviq/erp/sync", {
+    method: "POST",
+    headers: serviqHeaders(),
   });
 }
 

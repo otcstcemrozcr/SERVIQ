@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, type FormEvent, KeyboardEvent, ClipboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Button, TextInput } from "@/components/ui";
-import { Activity, Target, Building2, RefreshCw } from "lucide-react";
+import { Activity, Target, Building2, RefreshCw, Zap } from "lucide-react";
 
 import { sendOtp, verifyOtp } from "@/lib/api";
 
@@ -54,6 +54,25 @@ export default function LoginPage() {
       }
     } catch (err: any) {
       setError(err.message || "Geçersiz veya süresi dolmuş kod.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleDemoLogin() {
+    setLoading(true);
+    setError("");
+    try {
+      // Create a dummy successful state directly for the demo
+      const res = await verifyOtp("demo@serviq.app", "123456");
+      if (res.api_key) {
+        localStorage.setItem("serviq_api_key", res.api_key);
+        router.push("/serviq");
+      } else {
+        setError("Sunucudan geçersiz yanıt alındı.");
+      }
+    } catch (err: any) {
+      setError(err.message || "Giriş yapılamadı.");
     } finally {
       setLoading(false);
     }
@@ -199,29 +218,50 @@ export default function LoginPage() {
       <div style={{ flex: 1, background: "#ffffff", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
         <div style={{ width: "100%", maxWidth: 400 }}>
           <div style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: "32px 24px", background: "#fff", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)" }}>
-            <h2 style={{ fontSize: 20, fontWeight: 700, color: "#0f172a", margin: "0 0 4px 0" }}>Sign in</h2>
-            <p style={{ fontSize: 13, color: "#64748b", margin: "0 0 24px 0" }}>Welcome back. Enter your credentials.</p>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "0 0 8px 0" }}>
+              <h2 style={{ fontSize: 20, fontWeight: 700, color: "#0f172a", margin: 0 }}>Sign in</h2>
+              <span style={{ background: "#dbeafe", color: "#1d4ed8", padding: "4px 10px", borderRadius: 16, fontSize: 12, fontWeight: 700, letterSpacing: "-0.01em" }}>📱 Saha Teknisyeni</span>
+            </div>
+            <p style={{ fontSize: 13, color: "#64748b", margin: "0 0 24px 0" }}>Teknisyen hesabınıza erişmek için bilgilerinizi girin.</p>
 
             {error && <div style={{ background: "#fef2f2", color: "#b91c1c", padding: "10px", borderRadius: "6px", marginBottom: "16px", fontSize: "13px" }}>{error}</div>}
 
             {step === 1 ? (
-              <form onSubmit={handleSendOtp} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                <div>
-                  <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "#334155", marginBottom: 6 }}>Email</label>
-                  <TextInput 
-                    type="email" 
-                    required 
-                    value={email} 
-                    onChange={(e) => setEmail(e.target.value)} 
-                    placeholder="ornek@sirket.com" 
-                    style={{ width: "100%", background: "#eff6ff" }} 
-                  />
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                <form onSubmit={handleSendOtp} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                  <div>
+                    <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "#334155", marginBottom: 6 }}>Email</label>
+                    <TextInput 
+                      type="email" 
+                      required 
+                      value={email} 
+                      onChange={(e) => setEmail(e.target.value)} 
+                      placeholder="ornek@sirket.com" 
+                      style={{ width: "100%", background: "#eff6ff" }} 
+                    />
+                  </div>
+                  
+                  <Button type="submit" variant="primary" style={{ width: "100%", marginTop: 8 }} disabled={loading || !email}>
+                    {loading ? "Gönderiliyor..." : "Devam Et"}
+                  </Button>
+                </form>
+
+                <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "16px 0" }}>
+                  <div style={{ flex: 1, height: 1, background: "#e2e8f0" }} />
+                  <span style={{ fontSize: 13, color: "#94a3b8", fontWeight: 500 }}>VEYA</span>
+                  <div style={{ flex: 1, height: 1, background: "#e2e8f0" }} />
                 </div>
-                
-                <Button type="submit" variant="primary" style={{ width: "100%", marginTop: 8 }} disabled={loading || !email}>
-                  {loading ? "Gönderiliyor..." : "Devam Et"}
+
+                <Button 
+                  type="button" 
+                  onClick={handleDemoLogin} 
+                  disabled={loading} 
+                  style={{ width: "100%", background: "#f8fafc", color: "#0f172a", border: "1px solid #cbd5e1", padding: "12px", display: "flex", justifyContent: "center", gap: 8, fontSize: 15, fontWeight: 600 }}
+                >
+                  <Zap size={18} color="#eab308" style={{ fill: "#eab308" }} />
+                  Tek Tıkla Demo Girişi
                 </Button>
-              </form>
+              </div>
             ) : (
               <form onSubmit={handleVerifyOtp} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
                 <div>
@@ -232,6 +272,11 @@ export default function LoginPage() {
                     <span style={{ fontSize: 12, color: "#64748b" }}>
                       {email} <button type="button" onClick={() => setStep(1)} style={{ background: "none", border: "none", color: "#3b82f6", cursor: "pointer", padding: 0, textDecoration: "underline" }}>(Değiştir)</button>
                     </span>
+                  </div>
+                  
+                  <div style={{ background: "#f8fafc", padding: "8px 12px", borderRadius: 6, border: "1px dashed #cbd5e1", fontSize: 13, color: "#64748b", marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span>Test ve demo ortamı şifresi:</span>
+                    <strong style={{ fontSize: 14, color: "#0f172a", letterSpacing: 2 }}>123456</strong>
                   </div>
 
                   <div style={{ display: "flex", gap: 8, justifyContent: "space-between" }}>

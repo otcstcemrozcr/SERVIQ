@@ -1,7 +1,8 @@
 "use client";
 
 import { useRef, type PointerEvent as ReactPointerEvent } from "react";
-import { Button } from "@/components/ui";
+import { Button, colors } from "@/components/ui";
+import { Eraser, PenTool } from "lucide-react";
 
 export function SignatureCanvas({
   value,
@@ -33,9 +34,10 @@ export function SignatureCanvas({
     canvas.setPointerCapture(event.pointerId);
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    ctx.strokeStyle = "#0f172a"; // Slate 900
+    ctx.strokeStyle = colors.primary; // Dark blue/primary
     ctx.lineWidth = 3;
     ctx.lineCap = "round";
+    ctx.lineJoin = "round";
     ctx.beginPath();
     ctx.moveTo(p.x, p.y);
   }
@@ -64,27 +66,52 @@ export function SignatureCanvas({
   }
 
   return (
-    <div style={{ display: "grid", gap: 12 }}>
-      <canvas
-        ref={canvasRef}
-        width={640}
-        height={220}
-        onPointerDown={start}
-        onPointerMove={move}
-        onPointerUp={stop}
-        onPointerLeave={stop}
-        style={{
-          width: "100%",
-          aspectRatio: "16 / 5.5",
-          border: "1px dashed #cbd5e1",
-          borderRadius: 8,
-          background: "#f8fafc",
-          touchAction: "none",
-          cursor: "crosshair",
-        }}
-      />
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ 
+        position: "relative",
+        border: `2px dashed ${value ? colors.primary : colors.border}`, 
+        borderRadius: 12, 
+        background: value ? "#f8fafc" : colors.soft,
+        overflow: "hidden"
+      }}>
+        {!value && (
+          <div style={{ 
+            position: "absolute", 
+            top: "50%", 
+            left: "50%", 
+            transform: "translate(-50%, -50%)", 
+            pointerEvents: "none", 
+            display: "flex", 
+            flexDirection: "column", 
+            alignItems: "center", 
+            gap: 8, 
+            color: colors.muted,
+            opacity: 0.5 
+          }}>
+            <PenTool size={32} />
+            <span style={{ fontSize: 14, fontWeight: 500 }}>Buraya İmzalayın</span>
+          </div>
+        )}
+        <canvas
+          ref={canvasRef}
+          width={640}
+          height={220}
+          onPointerDown={start}
+          onPointerMove={move}
+          onPointerUp={stop}
+          onPointerLeave={stop}
+          style={{
+            width: "100%",
+            aspectRatio: "16 / 5.5",
+            touchAction: "none",
+            cursor: "crosshair",
+            display: "block"
+          }}
+        />
+      </div>
       <div style={{ display: "flex", justifyContent: "flex-end" }}>
-        <Button type="button" variant="outline" onClick={clear} disabled={!value}>
+        <Button type="button" variant="outline" onClick={clear} disabled={!value} style={{ background: "#fff", color: colors.danger, borderColor: value ? colors.danger : colors.border }}>
+          <Eraser size={16} />
           {clearLabel}
         </Button>
       </div>
