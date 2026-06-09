@@ -1,6 +1,13 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { LocaleProvider } from "@/lib/i18n";
+import { Inter } from "next/font/google";
+
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "SERVIQ",
@@ -8,15 +15,12 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
-  // `lang` defaults to the default locale; LocaleProvider keeps it in sync with
-  // the user's stored choice on the client.
   return (
     <html lang="tr">
       <body
+        className={inter.className}
         style={{
           margin: 0,
-          fontFamily:
-            "system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
           color: "#111",
         }}
       >

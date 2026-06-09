@@ -147,7 +147,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", fontFamily: "system-ui, -apple-system, sans-serif" }}>
+    <div style={{ display: "flex", minHeight: "100vh", fontFamily: "inherit" }}>
       {/* Left Side: Original Dark Info Panel */}
       <div 
         style={{ 
@@ -158,60 +158,60 @@ export default function LoginPage() {
           overflow: "hidden",
           display: "flex",
           flexDirection: "column",
-          padding: "48px 64px"
+          padding: "56px 64px"
         }}
       >
-        {/* Subtle dot pattern background */}
+        {/* Ambient top-left corner glow + dot pattern background */}
         <div style={{ 
           position: "absolute", 
           inset: 0, 
-          opacity: 0.1, 
-          backgroundImage: "radial-gradient(#cbd5e1 1px, transparent 1px)", 
-          backgroundSize: "24px 24px" 
+          opacity: 0.8,
+          backgroundImage: "radial-gradient(circle at 0% 0%, rgba(59, 130, 246, 0.15) 0%, transparent 65%), radial-gradient(rgba(203, 213, 225, 0.08) 1.2px, transparent 1.2px)", 
+          backgroundSize: "100% 100%, 24px 24px" 
         }} />
 
         <div style={{ position: "relative", zIndex: 10, display: "flex", flexDirection: "column", height: "100%", justifyContent: "space-between" }}>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 800, margin: 0, display: "flex", alignItems: "center", gap: 6, letterSpacing: "-0.04em", fontFamily: "Inter, system-ui, sans-serif" }}>
+            <h1 style={{ fontSize: 20, fontWeight: 800, margin: 0, display: "flex", alignItems: "center", gap: 6, letterSpacing: "-0.04em", fontFamily: "inherit" }}>
               ServiQ <span style={{ color: "#3b82f6", fontWeight: 700 }}>AI</span>
             </h1>
 
-            <div style={{ marginTop: "12vh", maxWidth: 480 }}>
-              <h2 style={{ fontSize: 40, fontWeight: 700, lineHeight: 1.2, margin: "0 0 20px 0" }}>
+            <div style={{ marginTop: "10vh", maxWidth: 480 }}>
+              <h2 style={{ fontSize: 38, fontWeight: 700, lineHeight: 1.2, margin: "0 0 14px 0", letterSpacing: "-0.02em" }}>
                 The service engine for modern field teams.
               </h2>
-              <p style={{ fontSize: 16, color: "#94a3b8", lineHeight: 1.6, margin: "0 0 48px 0" }}>
+              <p style={{ fontSize: 15, color: "#94a3b8", lineHeight: 1.6, margin: "0 0 40px 0" }}>
                 Dispatch to closed-won, with an AI assistant watching the numbers so your team can focus on resolving issues.
               </p>
 
-              <div style={{ display: "grid", gap: 32 }}>
+              <div style={{ display: "grid", gap: 28 }}>
                 <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-                  <div style={{ background: "rgba(59, 130, 246, 0.1)", border: "1px solid rgba(59, 130, 246, 0.2)", padding: 10, borderRadius: 8 }}>
+                  <div style={{ background: "rgba(15, 23, 42, 0.4)", border: "1px solid rgba(59, 130, 246, 0.15)", padding: 10, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <Activity size={20} color="#3b82f6" />
                   </div>
                   <div>
-                    <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>See service at a glance</div>
-                    <div style={{ color: "#94a3b8", fontSize: 14 }}>Work orders, SLAs and risk — understood in 60 seconds.</div>
+                    <div style={{ fontWeight: 600, fontSize: 15, color: "#fff", marginBottom: 2 }}>See service at a glance</div>
+                    <div style={{ color: "#94a3b8", fontSize: 13.5, lineHeight: 1.4 }}>Work orders, SLAs and risk — understood in 60 seconds.</div>
                   </div>
                 </div>
 
                 <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-                  <div style={{ background: "rgba(59, 130, 246, 0.1)", border: "1px solid rgba(59, 130, 246, 0.2)", padding: 10, borderRadius: 8 }}>
+                  <div style={{ background: "rgba(15, 23, 42, 0.4)", border: "1px solid rgba(59, 130, 246, 0.15)", padding: 10, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <Target size={20} color="#3b82f6" />
                   </div>
                   <div>
-                    <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>Focus on what wins</div>
-                    <div style={{ color: "#94a3b8", fontSize: 14 }}>Grounded insights and next actions, straight from your data.</div>
+                    <div style={{ fontWeight: 600, fontSize: 15, color: "#fff", marginBottom: 2 }}>Focus on what wins</div>
+                    <div style={{ color: "#94a3b8", fontSize: 13.5, lineHeight: 1.4 }}>Grounded insights and next actions, straight from your data.</div>
                   </div>
                 </div>
 
                 <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-                  <div style={{ background: "rgba(59, 130, 246, 0.1)", border: "1px solid rgba(59, 130, 246, 0.2)", padding: 10, borderRadius: 8 }}>
+                  <div style={{ background: "rgba(15, 23, 42, 0.4)", border: "1px solid rgba(59, 130, 246, 0.15)", padding: 10, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <Building2 size={20} color="#3b82f6" />
                   </div>
                   <div>
-                    <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>Enterprise-grade & multi-tenant</div>
-                    <div style={{ color: "#94a3b8", fontSize: 14 }}>Org-scoped data with role-based access from day one.</div>
+                    <div style={{ fontWeight: 600, fontSize: 15, color: "#fff", marginBottom: 2 }}>Enterprise-grade & multi-tenant</div>
+                    <div style={{ color: "#94a3b8", fontSize: 13.5, lineHeight: 1.4 }}>Org-scoped data with role-based access from day one.</div>
                   </div>
                 </div>
               </div>
@@ -465,6 +465,7 @@ export default function LoginPage() {
           font-weight: 600;
           cursor: pointer;
           transition: all 0.15s ease;
+          font-family: inherit;
         }
 
         .sf-tab-btn:hover {
@@ -536,6 +537,7 @@ export default function LoginPage() {
           color: #080f1e;
           transition: all 0.15s ease;
           outline: none;
+          font-family: inherit;
         }
 
         .sf-form-input:focus {
@@ -590,6 +592,7 @@ export default function LoginPage() {
           transition: background-color 0.15s ease;
           outline: none;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+          font-family: inherit;
         }
 
         .sf-btn-primary:hover:not(:disabled) {
@@ -644,6 +647,7 @@ export default function LoginPage() {
           gap: 8px;
           transition: all 0.15s ease;
           outline: none;
+          font-family: inherit;
         }
 
         .sf-btn-secondary:hover:not(:disabled) {
@@ -716,6 +720,7 @@ export default function LoginPage() {
           color: #080f1e;
           outline: none;
           transition: all 0.15s ease;
+          font-family: inherit;
         }
 
         .sf-otp-input:focus {
@@ -740,6 +745,7 @@ export default function LoginPage() {
           align-items: center;
           gap: 6px;
           font-weight: 600;
+          font-family: inherit;
         }
 
         .sf-resend-btn:disabled {
