@@ -441,6 +441,27 @@ export default function ServiqPage() {
             <RefreshCw size={16} className={busy === "erp_sync" ? "animate-spin" : ""} />
             <span className="desktop-only">ERP Senkronizasyonu</span>
           </button>
+          <a
+            href="/serviq/dashboard"
+            title="Back Office Dashboard"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              background: "#eff6ff",
+              color: "#1d4ed8",
+              border: "1px solid #bfdbfe",
+              padding: "8px 12px",
+              borderRadius: 6,
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: "pointer",
+              textDecoration: "none"
+            }}
+          >
+            <LayoutDashboard size={16} />
+            <span className="desktop-only">Back Ofis</span>
+          </a>
           <LanguageToggle />
           <div style={{ display: "flex", alignItems: "center", gap: 12, paddingLeft: 16, borderLeft: `1px solid ${colors.border}` }}>
             <div style={{ textAlign: "right" }} className="desktop-only">
@@ -450,7 +471,14 @@ export default function ServiqPage() {
             <button onClick={() => setShowConnection(true)} title="Ayarlar" style={{ background: "transparent", border: "none", cursor: "pointer", display: "flex" }}>
               <Settings size={20} color={colors.text} />
             </button>
-            <button style={{ background: "transparent", border: "none", cursor: "pointer", display: "flex" }}>
+            <button
+              onClick={() => {
+                localStorage.removeItem("serviq_api_key");
+                window.location.href = "/";
+              }}
+              title="Çıkış Yap"
+              style={{ background: "transparent", border: "none", cursor: "pointer", display: "flex" }}
+            >
               <LogOut size={20} color={colors.text} />
             </button>
           </div>

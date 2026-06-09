@@ -15,6 +15,7 @@ export default function LoginPage() {
   const [timeLeft, setTimeLeft] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [role, setRole] = useState<"technician" | "backoffice">("technician");
 
   async function handleSendOtp(e: FormEvent) {
     e.preventDefault();
@@ -48,7 +49,8 @@ export default function LoginPage() {
       const res = await verifyOtp(email, finalCode);
       if (res.api_key) {
         localStorage.setItem("serviq_api_key", res.api_key);
-        router.push("/serviq");
+        localStorage.setItem("serviq_dashboard_view_mode", role);
+        router.push(role === "technician" ? "/serviq" : "/serviq/dashboard");
       } else {
         setError("Sunucudan geçersiz yanıt alındı.");
       }
@@ -67,7 +69,8 @@ export default function LoginPage() {
       const res = await verifyOtp("demo@serviq.app", "123456");
       if (res.api_key) {
         localStorage.setItem("serviq_api_key", res.api_key);
-        router.push("/serviq");
+        localStorage.setItem("serviq_dashboard_view_mode", role);
+        router.push(role === "technician" ? "/serviq" : "/serviq/dashboard");
       } else {
         setError("Sunucudan geçersiz yanıt alındı.");
       }
@@ -218,11 +221,71 @@ export default function LoginPage() {
       <div style={{ flex: 1, background: "#ffffff", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
         <div style={{ width: "100%", maxWidth: 400 }}>
           <div style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: "32px 24px", background: "#fff", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "0 0 8px 0" }}>
-              <h2 style={{ fontSize: 20, fontWeight: 700, color: "#0f172a", margin: 0 }}>Sign in</h2>
-              <span style={{ background: "#dbeafe", color: "#1d4ed8", padding: "4px 10px", borderRadius: 16, fontSize: 12, fontWeight: 700, letterSpacing: "-0.01em" }}>📱 Saha Teknisyeni</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "0 0 4px 0" }}>
+              <h2 style={{ fontSize: 22, fontWeight: 800, color: "#0f172a", margin: 0 }}>Sign in</h2>
             </div>
-            <p style={{ fontSize: 13, color: "#64748b", margin: "0 0 24px 0" }}>Teknisyen hesabınıza erişmek için bilgilerinizi girin.</p>
+            <p style={{ fontSize: 13, color: "#64748b", margin: "0 0 20px 0" }}>
+              {role === "technician" 
+                ? "Saha teknisyeni hesabınıza erişmek için bilgilerinizi girin." 
+                : "Back Ofis yönetici hesabınıza erişmek için bilgilerinizi girin."}
+            </p>
+
+            {/* Role Selector Segmented Control */}
+            <div style={{ 
+              display: "flex", 
+              background: "#f1f5f9", 
+              borderRadius: "8px", 
+              padding: "4px", 
+              marginBottom: 24,
+              border: "1px solid #e2e8f0"
+            }}>
+              <button
+                type="button"
+                onClick={() => setRole("technician")}
+                style={{
+                  flex: 1,
+                  padding: "8px 12px",
+                  borderRadius: "6px",
+                  border: "none",
+                  background: role === "technician" ? "#ffffff" : "transparent",
+                  color: role === "technician" ? "#1e293b" : "#64748b",
+                  fontWeight: 600,
+                  fontSize: "14px",
+                  cursor: "pointer",
+                  boxShadow: role === "technician" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+                  transition: "all 0.2s ease",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6
+                }}
+              >
+                <span>📱</span> Saha Teknisyeni
+              </button>
+              <button
+                type="button"
+                onClick={() => setRole("backoffice")}
+                style={{
+                  flex: 1,
+                  padding: "8px 12px",
+                  borderRadius: "6px",
+                  border: "none",
+                  background: role === "backoffice" ? "#ffffff" : "transparent",
+                  color: role === "backoffice" ? "#1e293b" : "#64748b",
+                  fontWeight: 600,
+                  fontSize: "14px",
+                  cursor: "pointer",
+                  boxShadow: role === "backoffice" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+                  transition: "all 0.2s ease",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6
+                }}
+              >
+                <span>💻</span> Back Ofis
+              </button>
+            </div>
 
             {error && <div style={{ background: "#fef2f2", color: "#b91c1c", padding: "10px", borderRadius: "6px", marginBottom: "16px", fontSize: "13px" }}>{error}</div>}
 
