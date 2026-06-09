@@ -8,7 +8,10 @@ import {
   Smartphone, 
   Monitor, 
   Lock, 
-  Info
+  Info,
+  Activity,
+  Target,
+  Building2
 } from "lucide-react";
 
 import { sendOtp, verifyOtp } from "@/lib/api";
@@ -107,14 +110,12 @@ export default function LoginPage() {
     }
   }
 
-  // Backspace key handler
   function handleOtpKeyDown(index: number, e: KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Backspace" && !otp[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
   }
 
-  // Paste handler for 6 digit code
   function handleOtpPaste(e: ClipboardEvent<HTMLInputElement>) {
     e.preventDefault();
     const pastedData = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6).split("");
@@ -146,182 +147,261 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="sf-page-wrapper">
-      <div className="sf-login-card-container">
-        <div className="sf-login-card">
-          {/* Cloud Brand Logo for card top */}
-          <div className="sf-card-logo">
-            <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="#0176d3" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="sf-cloud-icon">
-              <path d="M17.5 19A3.5 3.5 0 0 0 21 15.5c0-2.79-2.54-4.5-5-4.5-.42 0-.83.07-1.22.2A5 5 0 0 0 5 13c0 .34.03.68.1 1a4.5 4.5 0 0 0 1.9 8" />
-              <path d="M12 12v9" />
-              <path d="m9 18 3 3 3-3" />
-            </svg>
-            <h1 className="sf-card-title">ServiQ Giriş</h1>
-          </div>
+    <div style={{ display: "flex", minHeight: "100vh", fontFamily: "system-ui, -apple-system, sans-serif" }}>
+      {/* Left Side: Original Dark Info Panel */}
+      <div 
+        style={{ 
+          flex: 1, 
+          background: "#0b1120", 
+          color: "#fff",
+          position: "relative",
+          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
+          padding: "48px 64px"
+        }}
+      >
+        {/* Subtle dot pattern background */}
+        <div style={{ 
+          position: "absolute", 
+          inset: 0, 
+          opacity: 0.1, 
+          backgroundImage: "radial-gradient(#cbd5e1 1px, transparent 1px)", 
+          backgroundSize: "24px 24px" 
+        }} />
 
-          {/* Role Tab Selector (SLDS Lightning Tab Style) */}
-          <div className="sf-tabs-nav">
-            <button
-              type="button"
-              className={`sf-tab-btn ${role === "technician" ? "active" : ""}`}
-              onClick={() => setRole("technician")}
-            >
-              <Smartphone size={16} />
-              <span>Saha Teknisyeni</span>
-            </button>
-            <button
-              type="button"
-              className={`sf-tab-btn ${role === "backoffice" ? "active" : ""}`}
-              onClick={() => setRole("backoffice")}
-            >
-              <Monitor size={16} />
-              <span>Back Ofis</span>
-            </button>
-          </div>
+        <div style={{ position: "relative", zIndex: 10, display: "flex", flexDirection: "column", height: "100%", justifyContent: "space-between" }}>
+          <div>
+            <h1 style={{ fontSize: 20, fontWeight: 800, margin: 0, display: "flex", alignItems: "center", gap: 6, letterSpacing: "-0.04em", fontFamily: "Inter, system-ui, sans-serif" }}>
+              ServiQ <span style={{ color: "#3b82f6", fontWeight: 700 }}>AI</span>
+            </h1>
 
-          {error && (
-            <div className="sf-error-alert">
-              <Info size={16} className="sf-error-icon" />
-              <div className="sf-error-message">{error}</div>
-            </div>
-          )}
+            <div style={{ marginTop: "12vh", maxWidth: 480 }}>
+              <h2 style={{ fontSize: 40, fontWeight: 700, lineHeight: 1.2, margin: "0 0 20px 0" }}>
+                The service engine for modern field teams.
+              </h2>
+              <p style={{ fontSize: 16, color: "#94a3b8", lineHeight: 1.6, margin: "0 0 48px 0" }}>
+                Dispatch to closed-won, with an AI assistant watching the numbers so your team can focus on resolving issues.
+              </p>
 
-          {step === 1 ? (
-            <form onSubmit={handleSendOtp} className="sf-form">
-              <div className="sf-form-group">
-                <label htmlFor="email" className="sf-form-label">
-                  Kullanıcı Adı veya E-posta
-                </label>
-                <div className="sf-input-wrapper">
-                  <input
-                    id="email"
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="ad.soyad@serviq.app"
-                    className="sf-form-input"
-                  />
+              <div style={{ display: "grid", gap: 32 }}>
+                <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+                  <div style={{ background: "rgba(59, 130, 246, 0.1)", border: "1px solid rgba(59, 130, 246, 0.2)", padding: 10, borderRadius: 8 }}>
+                    <Activity size={20} color="#3b82f6" />
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>See service at a glance</div>
+                    <div style={{ color: "#94a3b8", fontSize: 14 }}>Work orders, SLAs and risk — understood in 60 seconds.</div>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+                  <div style={{ background: "rgba(59, 130, 246, 0.1)", border: "1px solid rgba(59, 130, 246, 0.2)", padding: 10, borderRadius: 8 }}>
+                    <Target size={20} color="#3b82f6" />
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>Focus on what wins</div>
+                    <div style={{ color: "#94a3b8", fontSize: 14 }}>Grounded insights and next actions, straight from your data.</div>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+                  <div style={{ background: "rgba(59, 130, 246, 0.1)", border: "1px solid rgba(59, 130, 246, 0.2)", padding: 10, borderRadius: 8 }}>
+                    <Building2 size={20} color="#3b82f6" />
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>Enterprise-grade & multi-tenant</div>
+                    <div style={{ color: "#94a3b8", fontSize: 14 }}>Org-scoped data with role-based access from day one.</div>
+                  </div>
                 </div>
               </div>
+            </div>
+          </div>
+          
+          <div style={{ fontSize: 12, color: "#64748b" }}>
+            &copy; 2026 SERVIQ AI · Field Operations
+          </div>
+        </div>
+      </div>
 
-              <div className="sf-form-options">
-                <label className="sf-checkbox-label">
-                  <input type="checkbox" defaultChecked className="sf-checkbox" />
-                  <span>Beni Hatırla</span>
-                </label>
-                <a href="#" className="sf-form-link" onClick={(e) => e.preventDefault()}>
-                  Şifremi Unuttum?
-                </a>
-              </div>
+      {/* Right Side: Salesforce-style Login card */}
+      <div className="sf-right-panel">
+        <div className="sf-login-card-container">
+          <div className="sf-login-card">
+            {/* Cloud Brand Logo for card top */}
+            <div className="sf-card-logo">
+              <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="#0176d3" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="sf-cloud-icon">
+                <path d="M17.5 19A3.5 3.5 0 0 0 21 15.5c0-2.79-2.54-4.5-5-4.5-.42 0-.83.07-1.22.2A5 5 0 0 0 5 13c0 .34.03.68.1 1a4.5 4.5 0 0 0 1.9 8" />
+                <path d="M12 12v9" />
+                <path d="m9 18 3 3 3-3" />
+              </svg>
+              <h1 className="sf-card-title">ServiQ Giriş</h1>
+            </div>
 
-              <button
-                type="submit"
-                disabled={loading || !email}
-                className="sf-btn-primary"
-              >
-                {loading ? "Bağlanıyor..." : "İleri"}
-              </button>
-
-              <div className="sf-divider">
-                <span className="sf-divider-text">veya</span>
-              </div>
-
+            {/* Role Tab Selector (SLDS Lightning Tab Style) */}
+            <div className="sf-tabs-nav">
               <button
                 type="button"
-                onClick={handleDemoLogin}
-                disabled={loading}
-                className="sf-btn-secondary"
+                className={`sf-tab-btn ${role === "technician" ? "active" : ""}`}
+                onClick={() => setRole("technician")}
               >
-                <Zap size={15} className="sf-zap-icon" />
-                <span>Sandbox / Demo Ortamı Girişi</span>
+                <Smartphone size={16} />
+                <span>Saha Teknisyeni</span>
               </button>
-            </form>
-          ) : (
-            <form onSubmit={handleVerifyOtp} className="sf-form">
-              <div className="sf-form-group">
-                <div className="sf-otp-header">
-                  <label className="sf-form-label">Tek Kullanımlık Şifre (OTP)</label>
-                  <span className="sf-otp-email">
-                    {email}{" "}
-                    <button
-                      type="button"
-                      onClick={() => setStep(1)}
-                      className="sf-change-email-btn"
-                    >
-                      (Değiştir)
-                    </button>
-                  </span>
-                </div>
+              <button
+                type="button"
+                className={`sf-tab-btn ${role === "backoffice" ? "active" : ""}`}
+                onClick={() => setRole("backoffice")}
+              >
+                <Monitor size={16} />
+                <span>Back Ofis</span>
+              </button>
+            </div>
 
-                <div className="sf-otp-info-box">
-                  <Lock size={14} className="sf-lock-icon" />
-                  <span>Test ortamı giriş kodu: <strong>123456</strong></span>
-                </div>
-
-                <div className="sf-otp-inputs-row">
-                  {otp.map((digit, index) => (
-                    <input
-                      key={index}
-                      ref={(el) => {
-                        inputRefs.current[index] = el;
-                      }}
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={1}
-                      value={digit}
-                      onChange={(e) => handleOtpChange(index, e.target.value.replace(/\D/g, ""))}
-                      onKeyDown={(e) => handleOtpKeyDown(index, e)}
-                      onPaste={handleOtpPaste}
-                      className="sf-otp-input"
-                      onFocus={(e) => e.target.select()}
-                    />
-                  ))}
-                </div>
+            {error && (
+              <div className="sf-error-alert">
+                <Info size={16} className="sf-error-icon" />
+                <div className="sf-error-message">{error}</div>
               </div>
+            )}
 
-              <div className="sf-otp-resend-row">
+            {step === 1 ? (
+              <form onSubmit={handleSendOtp} className="sf-form">
+                <div className="sf-form-group">
+                  <label htmlFor="email" className="sf-form-label">
+                    Kullanıcı Adı veya E-posta
+                  </label>
+                  <div className="sf-input-wrapper">
+                    <input
+                      id="email"
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="ad.soyad@serviq.app"
+                      className="sf-form-input"
+                    />
+                  </div>
+                </div>
+
+                <div className="sf-form-options">
+                  <label className="sf-checkbox-label">
+                    <input type="checkbox" defaultChecked className="sf-checkbox" />
+                    <span>Beni Hatırla</span>
+                  </label>
+                  <a href="#" className="sf-form-link" onClick={(e) => e.preventDefault()}>
+                    Şifremi Unuttum?
+                  </a>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading || !email}
+                  className="sf-btn-primary"
+                >
+                  {loading ? "Bağlanıyor..." : "İleri"}
+                </button>
+
+                <div className="sf-divider">
+                  <span className="sf-divider-text">veya</span>
+                </div>
+
                 <button
                   type="button"
-                  onClick={handleResend}
-                  disabled={timeLeft > 0 || loading}
-                  className="sf-resend-btn"
+                  onClick={handleDemoLogin}
+                  disabled={loading}
+                  className="sf-btn-secondary"
                 >
-                  <RefreshCw size={12} className={loading && timeLeft === 0 ? "animate-spin" : ""} />
-                  {timeLeft > 0 ? `${timeLeft} sn sonra kodu tekrar gönder` : "Kodu Yeniden Gönder"}
+                  <Zap size={15} className="sf-zap-icon" />
+                  <span>Sandbox / Demo Ortamı Girişi</span>
                 </button>
-              </div>
+              </form>
+            ) : (
+              <form onSubmit={handleVerifyOtp} className="sf-form">
+                <div className="sf-form-group">
+                  <div className="sf-otp-header">
+                    <label className="sf-form-label">Tek Kullanımlık Şifre (OTP)</label>
+                    <span className="sf-otp-email">
+                      {email}{" "}
+                      <button
+                        type="button"
+                        onClick={() => setStep(1)}
+                        className="sf-change-email-btn"
+                      >
+                        (Değiştir)
+                      </button>
+                    </span>
+                  </div>
 
-              <button
-                type="submit"
-                disabled={loading || otp.join("").length !== 6}
-                className="sf-btn-primary"
-              >
-                {loading ? "Doğrulanıyor..." : "Giriş Yap"}
-              </button>
-            </form>
-          )}
-        </div>
+                  <div className="sf-otp-info-box">
+                    <Lock size={14} className="sf-lock-icon" />
+                    <span>Test ortamı giriş kodu: <strong>123456</strong></span>
+                  </div>
 
-        {/* Salesforce style footer links below card */}
-        <div className="sf-card-footer-links">
-          <a href="#" className="sf-footer-link" onClick={(e) => e.preventDefault()}>Özel Alan Adı Kullan</a>
-          <span className="sf-footer-dot">•</span>
-          <a href="#" className="sf-footer-link" onClick={(e) => e.preventDefault()}>Yardım al</a>
-          <span className="sf-footer-dot">•</span>
-          <a href="#" className="sf-footer-link" onClick={(e) => e.preventDefault()}>Güvenlik Bildirimi</a>
+                  <div className="sf-otp-inputs-row">
+                    {otp.map((digit, index) => (
+                      <input
+                        key={index}
+                        ref={(el) => {
+                          inputRefs.current[index] = el;
+                        }}
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={1}
+                        value={digit}
+                        onChange={(e) => handleOtpChange(index, e.target.value.replace(/\D/g, ""))}
+                        onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                        onPaste={handleOtpPaste}
+                        className="sf-otp-input"
+                        onFocus={(e) => e.target.select()}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <div className="sf-otp-resend-row">
+                  <button
+                    type="button"
+                    onClick={handleResend}
+                    disabled={timeLeft > 0 || loading}
+                    className="sf-resend-btn"
+                  >
+                    <RefreshCw size={12} className={loading && timeLeft === 0 ? "animate-spin" : ""} />
+                    {timeLeft > 0 ? `${timeLeft} sn sonra kodu tekrar gönder` : "Kodu Yeniden Gönder"}
+                  </button>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading || otp.join("").length !== 6}
+                  className="sf-btn-primary"
+                >
+                  {loading ? "Doğrulanıyor..." : "Giriş Yap"}
+                </button>
+              </form>
+            )}
+          </div>
+
+          {/* Salesforce style footer links below card */}
+          <div className="sf-card-footer-links">
+            <a href="#" className="sf-footer-link" onClick={(e) => e.preventDefault()}>Özel Alan Adı Kullan</a>
+            <span className="sf-footer-dot">•</span>
+            <a href="#" className="sf-footer-link" onClick={(e) => e.preventDefault()}>Yardım al</a>
+            <span className="sf-footer-dot">•</span>
+            <a href="#" className="sf-footer-link" onClick={(e) => e.preventDefault()}>Güvenlik Bildirimi</a>
+          </div>
         </div>
       </div>
 
       <style jsx>{`
-        .sf-page-wrapper {
+        /* Right side panel styling */
+        .sf-right-panel {
+          flex: 1;
           display: flex;
           align-items: center;
           justify-content: center;
-          min-height: 100vh;
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-          background: #f3f5f9;
-          padding: 24px;
+          padding: 40px;
+          background-color: #f3f5f9;
         }
 
         .sf-login-card-container {
@@ -697,6 +777,26 @@ export default function LoginPage() {
 
         .sf-footer-dot {
           color: #8a8683;
+        }
+
+        /* Responsive styling for split screen */
+        @media (max-width: 950px) {
+          div[style*="minHeight"] {
+            flex-direction: column !important;
+          }
+          div[style*="background: #0b1120"] {
+            flex: none !important;
+            padding: 32px 24px !important;
+            min-height: auto !important;
+          }
+          div[style*="marginTop: 12vh"] {
+            margin-top: 24px !important;
+          }
+          .sf-right-panel {
+            flex: none;
+            width: 100%;
+            padding: 32px 16px;
+          }
         }
       `}</style>
     </div>
