@@ -172,15 +172,15 @@ export default function LoginPage() {
 
         <div style={{ position: "relative", zIndex: 10, display: "flex", flexDirection: "column", height: "100%", justifyContent: "space-between" }}>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 800, margin: 0, display: "flex", alignItems: "center", gap: 6, letterSpacing: "-0.04em", fontFamily: "inherit" }}>
+            <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: 6, letterSpacing: "-0.03em", fontFamily: "inherit" }}>
               ServiQ <span style={{ color: "#3b82f6", fontWeight: 700 }}>AI</span>
             </h1>
 
             <div style={{ marginTop: "10vh", maxWidth: 480 }}>
-              <h2 style={{ fontSize: 38, fontWeight: 700, lineHeight: 1.2, margin: "0 0 14px 0", letterSpacing: "-0.02em" }}>
+              <h2 style={{ fontSize: 40, fontWeight: 700, lineHeight: 1.25, margin: "0 0 14px 0", letterSpacing: "-0.02em" }}>
                 The service engine for modern field teams.
               </h2>
-              <p style={{ fontSize: 15, color: "#94a3b8", lineHeight: 1.6, margin: "0 0 40px 0" }}>
+              <p style={{ fontSize: 16, color: "#94a3b8", lineHeight: 1.6, margin: "0 0 40px 0" }}>
                 Dispatch to closed-won, with an AI assistant watching the numbers so your team can focus on resolving issues.
               </p>
 
@@ -190,8 +190,8 @@ export default function LoginPage() {
                     <Activity size={20} color="#3b82f6" />
                   </div>
                   <div>
-                    <div style={{ fontWeight: 600, fontSize: 15, color: "#fff", marginBottom: 2 }}>See service at a glance</div>
-                    <div style={{ color: "#94a3b8", fontSize: 13.5, lineHeight: 1.4 }}>Work orders, SLAs and risk — understood in 60 seconds.</div>
+                    <div style={{ fontWeight: 600, fontSize: 16, color: "#fff", marginBottom: 2 }}>See service at a glance</div>
+                    <div style={{ color: "#94a3b8", fontSize: 14, lineHeight: 1.4 }}>Work orders, SLAs and risk — understood in 60 seconds.</div>
                   </div>
                 </div>
 
@@ -200,8 +200,8 @@ export default function LoginPage() {
                     <Target size={20} color="#3b82f6" />
                   </div>
                   <div>
-                    <div style={{ fontWeight: 600, fontSize: 15, color: "#fff", marginBottom: 2 }}>Focus on what wins</div>
-                    <div style={{ color: "#94a3b8", fontSize: 13.5, lineHeight: 1.4 }}>Grounded insights and next actions, straight from your data.</div>
+                    <div style={{ fontWeight: 600, fontSize: 16, color: "#fff", marginBottom: 2 }}>Focus on what wins</div>
+                    <div style={{ color: "#94a3b8", fontSize: 14, lineHeight: 1.4 }}>Grounded insights and next actions, straight from your data.</div>
                   </div>
                 </div>
 
@@ -210,15 +210,15 @@ export default function LoginPage() {
                     <Building2 size={20} color="#3b82f6" />
                   </div>
                   <div>
-                    <div style={{ fontWeight: 600, fontSize: 15, color: "#fff", marginBottom: 2 }}>Enterprise-grade & multi-tenant</div>
-                    <div style={{ color: "#94a3b8", fontSize: 13.5, lineHeight: 1.4 }}>Org-scoped data with role-based access from day one.</div>
+                    <div style={{ fontWeight: 600, fontSize: 16, color: "#fff", marginBottom: 2 }}>Enterprise-grade & multi-tenant</div>
+                    <div style={{ color: "#94a3b8", fontSize: 14, lineHeight: 1.4 }}>Org-scoped data with role-based access from day one.</div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
           
-          <div style={{ fontSize: 12, color: "#64748b" }}>
+          <div style={{ fontSize: 13, color: "#64748b" }}>
             &copy; 2026 SERVIQ AI · Field Operations
           </div>
         </div>
